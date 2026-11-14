@@ -142,6 +142,24 @@ class EncodedSet:
             float(gap_extend),
         )
 
+    def scores_for(
+        self,
+        query: str,
+        gap_open: float = DEFAULT_GAP_OPEN,
+        gap_extend: float = DEFAULT_GAP_EXTEND,
+    ) -> np.ndarray:
+        """Score an outside `query` sequence against every sequence in the set (parallel)."""
+        if not query or not len(self):
+            return np.zeros(len(self))
+        return _score_many(
+            blosum62.encode(query),
+            self.flat,
+            self.offsets,
+            self._sub,
+            float(gap_open + gap_extend),
+            float(gap_extend),
+        )
+
     def self_scores(self) -> np.ndarray:
         """Each sequence's score against itself (the best it could possibly do)."""
         return np.array(
