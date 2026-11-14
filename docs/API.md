@@ -95,3 +95,10 @@ below.
 | 409 | results asked for while the run is queued / running / failed (the message says which, and why it failed) |
 | 422 | unusable input (empty or non-protein FASTA, over the limits) or a parameter out of range |
 | 503 | UniProt cannot be reached |
+
+## Serving the dashboard
+
+After `npm run build` in `frontend/`, the same server also serves the dashboard: `/` and every
+address that is not under `/api/`, `/docs` or `/health` return the built app (so a deep link such
+as `/runs/abc123def456` opens the right page). Without a build these paths are plain 404s and
+only the API is available. See [FRONTEND.md](FRONTEND.md).

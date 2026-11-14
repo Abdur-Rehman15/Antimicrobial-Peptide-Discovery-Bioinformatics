@@ -23,7 +23,10 @@ import requests
 
 BASE_URL = "https://rest.uniprot.org"
 USER_AGENT = "amp-triage-student-project"
-ACCESSION = re.compile(r"^[A-Z][A-Z0-9]{5,9}(-\d+)?$")
+# UniProt's official accession format (https://www.uniprot.org/help/accession_numbers)
+ACCESSION = re.compile(
+    r"^([OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})(-\d+)?$"
+)
 MAX_ORGANISM_PROTEINS = 60_000  # refuse to download more than this many reviewed proteins
 
 

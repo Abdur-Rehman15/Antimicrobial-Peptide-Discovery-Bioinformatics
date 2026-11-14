@@ -461,6 +461,9 @@ def test_uniprot_errors_become_readable_messages():
         down.fetch_accessions_fasta(["P69905"])
     with pytest.raises(UniProtError, match="Not a UniProt accession"):
         UniProtClient(FakeSession({})).fetch_accessions_fasta(["not an accession!"])
+    # six to ten letters and digits, but not the real accession format
+    with pytest.raises(UniProtError, match="Not a UniProt accession: NONSENSE"):
+        UniProtClient(FakeSession({})).fetch_accessions_fasta(["nonsense"])
     with pytest.raises(UniProtError, match="No accessions"):
         UniProtClient(FakeSession({})).fetch_accessions_fasta(["  "])
 
@@ -476,3 +479,32 @@ def test_uniprot_refuses_oversized_or_empty_organisms():
         UniProtClient(FakeSession(info(10**6))).fetch_organism_fasta(1)
     session = FakeSession({**info(3), "/uniprotkb/stream": FakeResponse(">sp|P1|X\nAAAA\n")})
     assert UniProtClient(session).fetch_organism_fasta(7).startswith(">sp|P1|X")
+
+
+# ---- serving the built dashboard ----------------------------------------------------------
+
+
+def test_the_built_dashboard_is_served_with_a_fallback_for_deep_links(tmp_path, models):
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<html>dashboard</html>")
+    (dist / "assets" / "app.js").write_text("console.log('hi')")
+    (tmp_path / "secret.txt").write_text("outside the dist folder")
+    client = make_client(tmp_path, models, static_dir=dist)
+
+    assert client.get("/").text == "<html>dashboard</html>"
+    assert client.get("/assets/app.js").text == "console.log('hi')"
+    assert client.get("/runs/abcdef012345").text == "<html>dashboard</html>"  # deep link
+    assert client.get("/health").json() == {"status": "ok"}  # API routes still win
+    assert client.get("/api/runs").json() == []
+    unknown = client.get("/api/nothing-here")
+    assert unknown.status_code == 404
+    assert unknown.headers["content-type"].startswith("application/json")
+    assert client.get("/docs").status_code == 200  # the API docs are not swallowed
+    leak = client.get("/..%2Fsecret.txt")
+    assert "outside the dist folder" not in leak.text
+
+
+def test_without_a_built_dashboard_unknown_paths_are_plain_404(tmp_path, models):
+    client = make_client(tmp_path, models, static_dir=tmp_path / "missing")
+    assert client.get("/").status_code == 404

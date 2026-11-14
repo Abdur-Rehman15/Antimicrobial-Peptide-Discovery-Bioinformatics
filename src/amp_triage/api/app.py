@@ -27,7 +27,7 @@ from pathlib import Path
 import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 
 from amp_triage import config
 from amp_triage.alignment import smith_waterman
@@ -151,6 +151,7 @@ def create_app(
     limits: Limits | None = None,
     executor=None,
     calibration=None,
+    static_dir: Path | None = None,
 ) -> FastAPI:
     app = FastAPI(
         title="AMP Triage",
@@ -340,6 +341,21 @@ def create_app(
                 "candidates": records(mine[["rank", "start", "end", "length", "sequence",
                                             "activity", "hemolysis_risk", "hemolysis_band",
                                             "novelty_class", "rank_score"]])}
+
+    # ---- the web dashboard (frontend/dist, built with `npm run build`) -----------------------
+    dist = (static_dir if static_dir is not None else config.ROOT / "frontend" / "dist").resolve()
+    if (dist / "index.html").exists():
+
+        @app.get("/{path:path}", include_in_schema=False)
+        def dashboard(path: str) -> FileResponse:
+            """Files of the built dashboard; any other address gets index.html, so that a
+            deep link such as /runs/abc123 opens the right page. API paths stay 404."""
+            if path.startswith("api/") or path == "health":
+                raise HTTPException(404, "Not found.")
+            candidate = (dist / path).resolve()
+            if path and candidate.is_file() and dist in candidate.parents:
+                return FileResponse(candidate)
+            return FileResponse(dist / "index.html")
 
     return app
 
