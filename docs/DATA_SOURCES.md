@@ -61,3 +61,52 @@ Findings on the full set:
   with concentration, unit and cell type. In principle the HAPPENN rule could be applied to it to
   extend HAPPENN. Optional.
 - 10,114 peptides link to a UniProt entry (useful for telling natural from designed peptides).
+
+## Cleaned positives (`python scripts/build_positives.py`, 12,075 distinct sequences)
+
+Output: `data/processed/positives.csv` (one row per distinct sequence, with sources, natural or
+synthetic origin, minimum MIC, and human hold-out flags). Per-source tables are in
+`data/interim/`. Code: `data/positives.py`, `data/dbaasp_activity.py`, `data/holdout.py`.
+
+**Rule for "active":** the best definite bacterial MIC is at most **32 µM**.
+
+| Step | Result |
+|---|---|
+| DBAASP detail files | 17,886 |
+| removed: D-amino acids (lowercase) | 1,399 |
+| removed: lipid or other exotic terminal groups (only free, acetyl N-term and free, amide C-term kept) | 527 |
+| DBAASP peptides kept | 15,960: **9,775 active**, 2,407 clearly inactive, 174 ambiguous, 3,604 with no usable bacterial MIC |
+| APD3 (8-50 aa, standard letters) | 2,828 |
+| DRAMP curated sets (General, Clinical, Specific), 8-50 aa | 4,772 |
+| Union, distinct sequences | 12,387 |
+| removed: **312 conflicts** (APD3/DRAMP list it as AMP, DBAASP measured it clearly above 32 µM) | 12,075 left |
+
+Final positives: **4,254 natural, 7,821 synthetic** (a sequence found in nature counts as natural
+even if DBAASP lists a lab-made copy).
+
+How MIC is read (all unit-tested): only bacterial MIC entries count (fungi, parasites, viruses,
+cells are excluded by genus); ranges use the upper end; "MIC > v" is never evidence of activity;
+µg/ml is converted to µM with the peptide's molecular weight; unit-less placeholder entries
+(value 1,111,111) are dropped. DBAASP's own `activity` number is always µg/ml: it agrees with
+our molecular-weight conversion for 98% of entries.
+
+About the 312 conflicts: spot checks show the DBAASP data really is weak (for example
+`FPVTWPTKWLKG`: MIC > 250 µg/ml against *E. coli* and *S. aureus*). The curated lists include
+peptides that work poorly in the lab, so these are removed rather than trusted either way.
+They are listed in `data/interim/positive_conflicts.csv`.
+
+**Human hold-out: 297 positives.** 109 are labelled human by a database. A further 188 are not
+labelled human but occur word-for-word inside a human reviewed protein (mostly lab-made
+fragments of human proteins, e.g. pieces of beta-defensin 1 recorded as "synthetic"). Using the
+labels alone would have leaked human sequences into training. LL-37 (inside cathelicidin, P49913)
+is among those held out. Similar-but-not-identical peptides (for example from other species) are
+handled later by clustering, so that a whole similar group is held out together.
+
+## Open points before negatives and the split
+
+* **Negatives must be drawn from windows that pass the same filters as real candidates.**
+  Random protein fragments are mostly not positively charged, so a model could separate them
+  from AMPs by charge alone and then fail on the real task. So the charge and hydrophobicity
+  filters (and the descriptors behind them) come before the negatives.
+* **Near-duplicates inside the positives** (for example peptides padded with extra alanines)
+  need clustering. The same clusters are used to split train and test.
