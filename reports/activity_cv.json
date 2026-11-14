@@ -1,0 +1,278 @@
+{
+ "{\"learning_rate\": 0.106, \"max_leaf_nodes\": 63, \"min_samples_leaf\": 50, \"l2_regularization\": 0.0, \"max_features\": 1.0}": {
+  "trees": 1000,
+  "tuning_natural_pr_on_val": 0.4761619123968795,
+  "mean": {
+   "natural PR AUC": 0.610686217051563,
+   "all PR AUC": 0.808337407561603,
+   "natural ROC AUC": 0.949468476398056,
+   "natural recall@FPR1e-3": 0.5697916666666666,
+   "natural recall@FPR1e-4": 0.2767361111111111,
+   "all recall@FPR1e-3": 0.678780633592349,
+   "synthetic PR AUC": 0.828354182744165
+  },
+  "std": {
+   "natural PR AUC": 0.011739495675307406,
+   "all PR AUC": 0.02723513529459956,
+   "natural ROC AUC": 0.009539071360746394,
+   "natural recall@FPR1e-3": 0.019618823731273115,
+   "natural recall@FPR1e-4": 0.046820312749455126,
+   "all recall@FPR1e-3": 0.04171400759327902,
+   "synthetic PR AUC": 0.04112827919609716
+  },
+  "folds": [
+   {
+    "natural PR AUC": 0.6133018756538351,
+    "all PR AUC": 0.8335104500922722,
+    "natural ROC AUC": 0.9623199162398002,
+    "natural recall@FPR1e-3": 0.5833333333333334,
+    "natural recall@FPR1e-4": 0.3107638888888889,
+    "all recall@FPR1e-3": 0.7202630005977286,
+    "synthetic PR AUC": 0.8639417887134002
+   },
+   {
+    "natural PR AUC": 0.5954658166097666,
+    "all PR AUC": 0.822594909967584,
+    "natural ROC AUC": 0.9415414832727451,
+    "natural recall@FPR1e-3": 0.5729166666666666,
+    "natural recall@FPR1e-4": 0.24131944444444445,
+    "all recall@FPR1e-3": 0.7011356843992828,
+    "synthetic PR AUC": 0.8593005435978283
+   },
+   {
+    "natural PR AUC": 0.6079112463948154,
+    "all PR AUC": 0.7736541261216238,
+    "natural ROC AUC": 0.9466642948368438,
+    "natural recall@FPR1e-3": 0.5434027777777778,
+    "natural recall@FPR1e-4": 0.25,
+    "all recall@FPR1e-3": 0.6264196054991034,
+    "synthetic PR AUC": 0.7729897935429838
+   },
+   {
+    "natural PR AUC": 0.6087118988670284,
+    "all PR AUC": 0.7845645507553953,
+    "natural ROC AUC": 0.9404752609614779,
+    "natural recall@FPR1e-3": 0.5572916666666666,
+    "natural recall@FPR1e-4": 0.3420138888888889,
+    "all recall@FPR1e-3": 0.6419605499103407,
+    "synthetic PR AUC": 0.7961762451344321
+   },
+   {
+    "natural PR AUC": 0.6280402477323695,
+    "all PR AUC": 0.8273630008711393,
+    "natural ROC AUC": 0.9563414266794129,
+    "natural recall@FPR1e-3": 0.5920138888888888,
+    "natural recall@FPR1e-4": 0.23958333333333334,
+    "all recall@FPR1e-3": 0.7041243275552899,
+    "synthetic PR AUC": 0.8493625427321806
+   }
+  ]
+ },
+ "{\"learning_rate\": 0.082, \"max_leaf_nodes\": 63, \"min_samples_leaf\": 100, \"l2_regularization\": 1.0, \"max_features\": 0.5}": {
+  "trees": 1000,
+  "tuning_natural_pr_on_val": 0.46561301002118394,
+  "mean": {
+   "natural PR AUC": 0.6127840857324118,
+   "all PR AUC": 0.8106945401336272,
+   "natural ROC AUC": 0.9549166327757022,
+   "natural recall@FPR1e-3": 0.5690972222222221,
+   "natural recall@FPR1e-4": 0.29097222222222224,
+   "all recall@FPR1e-3": 0.6781829049611476,
+   "synthetic PR AUC": 0.8310916669250833
+  },
+  "std": {
+   "natural PR AUC": 0.012126604074508296,
+   "all PR AUC": 0.027627201443050937,
+   "natural ROC AUC": 0.007896274532481855,
+   "natural recall@FPR1e-3": 0.013856298568913157,
+   "natural recall@FPR1e-4": 0.03792916079253436,
+   "all recall@FPR1e-3": 0.04388850712451748,
+   "synthetic PR AUC": 0.042530816403597724
+  },
+  "folds": [
+   {
+    "natural PR AUC": 0.6176922823426315,
+    "all PR AUC": 0.8353812659280089,
+    "natural ROC AUC": 0.9665874093975544,
+    "natural recall@FPR1e-3": 0.5746527777777778,
+    "natural recall@FPR1e-4": 0.3472222222222222,
+    "all recall@FPR1e-3": 0.7178720860729229,
+    "synthetic PR AUC": 0.866789489423175
+   },
+   {
+    "natural PR AUC": 0.6015195745027561,
+    "all PR AUC": 0.826389224325876,
+    "natural ROC AUC": 0.9472627127070207,
+    "natural recall@FPR1e-3": 0.5659722222222222,
+    "natural recall@FPR1e-4": 0.2708333333333333,
+    "all recall@FPR1e-3": 0.7053197848176928,
+    "synthetic PR AUC": 0.8637180821516447
+   },
+   {
+    "natural PR AUC": 0.6051869225044366,
+    "all PR AUC": 0.7727614678183641,
+    "natural ROC AUC": 0.9522149239993783,
+    "natural recall@FPR1e-3": 0.5572916666666666,
+    "natural recall@FPR1e-4": 0.2482638888888889,
+    "all recall@FPR1e-3": 0.6186491332934848,
+    "synthetic PR AUC": 0.7693384737904346
+   },
+   {
+    "natural PR AUC": 0.607882865294756,
+    "all PR AUC": 0.7900361702337536,
+    "natural ROC AUC": 0.9494397721431218,
+    "natural recall@FPR1e-3": 0.5572916666666666,
+    "natural recall@FPR1e-4": 0.3072916666666667,
+    "all recall@FPR1e-3": 0.6443514644351465,
+    "synthetic PR AUC": 0.8047668553793497
+   },
+   {
+    "natural PR AUC": 0.6316387840174791,
+    "all PR AUC": 0.8289045723621342,
+    "natural ROC AUC": 0.9590783456314353,
+    "natural recall@FPR1e-3": 0.5902777777777778,
+    "natural recall@FPR1e-4": 0.28125,
+    "all recall@FPR1e-3": 0.7047220561864913,
+    "synthetic PR AUC": 0.850845433880813
+   }
+  ]
+ },
+ "{\"learning_rate\": 0.098, \"max_leaf_nodes\": 63, \"min_samples_leaf\": 200, \"l2_regularization\": 0.0, \"max_features\": 1.0}": {
+  "trees": 1000,
+  "tuning_natural_pr_on_val": 0.46549754450500286,
+  "mean": {
+   "natural PR AUC": 0.6131688544844541,
+   "all PR AUC": 0.8093066741643955,
+   "natural ROC AUC": 0.9500145293050863,
+   "natural recall@FPR1e-3": 0.5718749999999999,
+   "natural recall@FPR1e-4": 0.29618055555555556,
+   "all recall@FPR1e-3": 0.67913927077107,
+   "synthetic PR AUC": 0.8302692858854437
+  },
+  "std": {
+   "natural PR AUC": 0.014482485596000658,
+   "all PR AUC": 0.025943663220711084,
+   "natural ROC AUC": 0.009192953392607122,
+   "natural recall@FPR1e-3": 0.015987311712807414,
+   "natural recall@FPR1e-4": 0.06088282011777892,
+   "all recall@FPR1e-3": 0.03606587772302922,
+   "synthetic PR AUC": 0.0394439465043614
+  },
+  "folds": [
+   {
+    "natural PR AUC": 0.6069681292100599,
+    "all PR AUC": 0.831413700216012,
+    "natural ROC AUC": 0.9650559256124555,
+    "natural recall@FPR1e-3": 0.5572916666666666,
+    "natural recall@FPR1e-4": 0.22395833333333334,
+    "all recall@FPR1e-3": 0.7047220561864913,
+    "synthetic PR AUC": 0.8640064434158435
+   },
+   {
+    "natural PR AUC": 0.5952988537750397,
+    "all PR AUC": 0.8221934985393898,
+    "natural ROC AUC": 0.944154275106844,
+    "natural recall@FPR1e-3": 0.578125,
+    "natural recall@FPR1e-4": 0.2604166666666667,
+    "all recall@FPR1e-3": 0.7023311416616856,
+    "synthetic PR AUC": 0.8561884167719981
+   },
+   {
+    "natural PR AUC": 0.6089178523096588,
+    "all PR AUC": 0.7737253265714965,
+    "natural ROC AUC": 0.9469222616827537,
+    "natural recall@FPR1e-3": 0.5538194444444444,
+    "natural recall@FPR1e-4": 0.3263888888888889,
+    "all recall@FPR1e-3": 0.6276150627615062,
+    "synthetic PR AUC": 0.7737673174717205
+   },
+   {
+    "natural PR AUC": 0.6217595985275532,
+    "all PR AUC": 0.7899624629638325,
+    "natural ROC AUC": 0.9420023928525412,
+    "natural recall@FPR1e-3": 0.578125,
+    "natural recall@FPR1e-4": 0.3819444444444444,
+    "all recall@FPR1e-3": 0.6545128511655708,
+    "synthetic PR AUC": 0.804035937844681
+   },
+   {
+    "natural PR AUC": 0.6328998385999595,
+    "all PR AUC": 0.8292383825312472,
+    "natural ROC AUC": 0.9519377912708371,
+    "natural recall@FPR1e-3": 0.5920138888888888,
+    "natural recall@FPR1e-4": 0.2881944444444444,
+    "all recall@FPR1e-3": 0.7065152420800956,
+    "synthetic PR AUC": 0.8533483139229754
+   }
+  ]
+ },
+ "{\"learning_rate\": 0.1, \"max_leaf_nodes\": 31, \"min_samples_leaf\": 20, \"l2_regularization\": 0.0, \"max_features\": 1.0}": {
+  "trees": 1000,
+  "tuning_natural_pr_on_val": 0.45596247738193824,
+  "mean": {
+   "natural PR AUC": 0.31387752780715694,
+   "all PR AUC": 0.5626908125672225,
+   "natural ROC AUC": 0.9338083471003573,
+   "natural recall@FPR1e-3": 0.20902777777777776,
+   "natural recall@FPR1e-4": 0.028819444444444443,
+   "all recall@FPR1e-3": 0.26168559473998804,
+   "synthetic PR AUC": 0.5419592465825163
+  },
+  "std": {
+   "natural PR AUC": 0.19938239043133077,
+   "all PR AUC": 0.2160946516750136,
+   "natural ROC AUC": 0.029706622417583144,
+   "natural recall@FPR1e-3": 0.28578044791364265,
+   "natural recall@FPR1e-4": 0.06444223685155644,
+   "all recall@FPR1e-3": 0.3588364658495358,
+   "synthetic PR AUC": 0.2508726615382913
+  },
+  "folds": [
+   {
+    "natural PR AUC": 0.5592393390695131,
+    "all PR AUC": 0.8118376527250306,
+    "natural ROC AUC": 0.9659036658976042,
+    "natural recall@FPR1e-3": 0.5416666666666666,
+    "natural recall@FPR1e-4": 0.1440972222222222,
+    "all recall@FPR1e-3": 0.6873879258816498,
+    "synthetic PR AUC": 0.8443710982463677
+   },
+   {
+    "natural PR AUC": 0.16061730880285352,
+    "all PR AUC": 0.42311227059084183,
+    "natural ROC AUC": 0.9141058908272446,
+    "natural recall@FPR1e-3": 0.0,
+    "natural recall@FPR1e-4": 0.0,
+    "all recall@FPR1e-3": 0.0,
+    "synthetic PR AUC": 0.3814279080300541
+   },
+   {
+    "natural PR AUC": 0.11645531954733183,
+    "all PR AUC": 0.3030669260432777,
+    "natural ROC AUC": 0.8949243016704135,
+    "natural recall@FPR1e-3": 0.0,
+    "natural recall@FPR1e-4": 0.0,
+    "all recall@FPR1e-3": 0.0,
+    "synthetic PR AUC": 0.24891562429655642
+   },
+   {
+    "natural PR AUC": 0.24244010635747407,
+    "all PR AUC": 0.5224615584960821,
+    "natural ROC AUC": 0.9359009789666742,
+    "natural recall@FPR1e-3": 0.001736111111111111,
+    "natural recall@FPR1e-4": 0.0,
+    "all recall@FPR1e-3": 0.0005977286312014345,
+    "synthetic PR AUC": 0.48111238918226523
+   },
+   {
+    "natural PR AUC": 0.490635565258612,
+    "all PR AUC": 0.7529756549808805,
+    "natural ROC AUC": 0.9582068981398498,
+    "natural recall@FPR1e-3": 0.5017361111111112,
+    "natural recall@FPR1e-4": 0.0,
+    "all recall@FPR1e-3": 0.620442319187089,
+    "synthetic PR AUC": 0.7539692131573378
+   }
+  ]
+ }
+}
