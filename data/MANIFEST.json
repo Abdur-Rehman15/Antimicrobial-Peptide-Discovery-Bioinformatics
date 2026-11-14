@@ -1,0 +1,119 @@
+[
+  {
+    "file": "data/raw/apd3/naturalAMPs_APD2024a.fasta",
+    "source": "APD3",
+    "url": "https://aps.unmc.edu/assets/sequences/naturalAMPs_APD2024a.fasta",
+    "downloaded_utc": "2026-11-13T22:28:45Z",
+    "bytes": 150144,
+    "sha256": "b2d30bbbe57a383220d5fa68fda5a73728d2345f88585a78aa5f9e9546cd3d66",
+    "note": ""
+  },
+  {
+    "file": "data/raw/apd3/humanAMPs_APD2024.fasta",
+    "source": "APD3",
+    "url": "https://aps.unmc.edu/assets/sequences/humanAMPs_APD2024.fasta",
+    "downloaded_utc": "2026-11-13T22:28:47Z",
+    "bytes": 10496,
+    "sha256": "3f8067c1e8376d2f5a151cdee2b3b54451a125ec847c217856ce86f665c35836",
+    "note": ""
+  },
+  {
+    "file": "data/raw/happenn/41598_2020_67701_MOESM1_ESM.pdf",
+    "source": "HAPPENN supplement (Sci Rep 2020)",
+    "url": "https://static-content.springer.com/esm/art%3A10.1038%2Fs41598-020-67701-3/MediaObjects/41598_2020_67701_MOESM1_ESM.pdf",
+    "downloaded_utc": "2026-11-13T22:28:48Z",
+    "bytes": 834371,
+    "sha256": "e16033a1aefb06bb54d975bcc049cda652f0ab4e9d7ec35247574e555d5fa739",
+    "note": ""
+  },
+  {
+    "file": "data/raw/uniprot/human_reviewed.fasta",
+    "source": "UniProtKB release 2026_04",
+    "url": "https://rest.uniprot.org/uniprotkb/stream",
+    "downloaded_utc": "2026-11-13T22:29:00Z",
+    "bytes": 13665976,
+    "sha256": "0444b7cf4f4ddca5467aee7e2d86d45fcf440a9a879c791ecfc4cc186ac0b3d7",
+    "note": "proteome:UP000005640 AND reviewed:true"
+  },
+  {
+    "file": "data/raw/uniprot/swissprot_amp_annotated.fasta",
+    "source": "UniProtKB release 2026_04",
+    "url": "https://rest.uniprot.org/uniprotkb/stream",
+    "downloaded_utc": "2026-11-13T22:29:03Z",
+    "bytes": 694368,
+    "sha256": "db294f48901eebfd90b2f8824e71a8cd7d68da75e07fe9abd2a627dd72b576a3",
+    "note": "reviewed:true AND (keyword:KW-0929 OR keyword:KW-0044 OR keyword:KW-0078 OR keyword:KW-0211 OR keyword:KW-0295 OR keyword:KW-0081)"
+  },
+  {
+    "file": "data/raw/uniprot/swissprot_not_amp.fasta",
+    "source": "UniProtKB release 2026_04",
+    "url": "https://rest.uniprot.org/uniprotkb/stream",
+    "downloaded_utc": "2026-11-13T22:31:11Z",
+    "bytes": 287715821,
+    "sha256": "03d92cccfba331e80d6fbc820a1d3ca9a7f2cb89a9862599bcaf549e9a526048",
+    "note": "reviewed:true AND NOT (keyword:KW-0929 OR keyword:KW-0044 OR keyword:KW-0078 OR keyword:KW-0211 OR keyword:KW-0295 OR keyword:KW-0081)"
+  },
+  {
+    "file": "data/raw/dramp/general_amps.txt",
+    "source": "DRAMP (CC BY 4.0)",
+    "url": "http://dramp.cpu-bioinfor.org/downloads/download.php?filename=download_data/DRAMP3.0_new/general_amps.txt",
+    "downloaded_utc": "2026-11-13T22:34:19Z",
+    "bytes": 13221293,
+    "sha256": "4e044b3a4d9fcfc24cff81cbcf9fdb48184b41d8773837c697a2f205c1ab9dd5",
+    "note": ""
+  },
+  {
+    "file": "data/raw/dramp/Antibacterial_amps.txt",
+    "source": "DRAMP (CC BY 4.0)",
+    "url": "http://dramp.cpu-bioinfor.org/downloads/download.php?filename=download_data/DRAMP3.0_new/Antibacterial_amps.txt",
+    "downloaded_utc": "2026-11-13T22:34:25Z",
+    "bytes": 4317763,
+    "sha256": "18cf52751d95cf4c18e42227bbaff8c1c1a7fa28b0a1c607eea1c2727c96ee97",
+    "note": ""
+  },
+  {
+    "file": "data/raw/dramp/Anti-Gram-positive_amps.txt",
+    "source": "DRAMP (CC BY 4.0)",
+    "url": "http://dramp.cpu-bioinfor.org/downloads/download.php?filename=download_data/DRAMP3.0_new/Anti-Gram-positive_amps.txt",
+    "downloaded_utc": "2026-11-13T22:34:30Z",
+    "bytes": 3483042,
+    "sha256": "7a04357043877da4f9baf21e44043ef94a93bed4141bb3d9a0a4083e051c41e2",
+    "note": ""
+  },
+  {
+    "file": "data/raw/dramp/Anti-Gram-_amps.txt",
+    "source": "DRAMP (CC BY 4.0)",
+    "url": "http://dramp.cpu-bioinfor.org/downloads/download.php?filename=download_data/DRAMP3.0_new/Anti-Gram-_amps.txt",
+    "downloaded_utc": "2026-11-13T22:34:36Z",
+    "bytes": 3234646,
+    "sha256": "b816de63b103da4bf545a088e715e23886b2ff9b2885e8823e8fa0fdb7f1636f",
+    "note": ""
+  },
+  {
+    "file": "data/raw/dramp/natural_amps.txt",
+    "source": "DRAMP (CC BY 4.0)",
+    "url": "http://dramp.cpu-bioinfor.org/downloads/download.php?filename=download_data/DRAMP3.0_new/natural_amps.txt",
+    "downloaded_utc": "2026-11-13T22:34:40Z",
+    "bytes": 2177343,
+    "sha256": "fbaebb527695785ec3e5c0d13cf6a4eb82aadfeeb5bca64e534fcfe22efd12aa",
+    "note": ""
+  },
+  {
+    "file": "data/raw/dramp/synthetic_amps.txt",
+    "source": "DRAMP (CC BY 4.0)",
+    "url": "http://dramp.cpu-bioinfor.org/downloads/download.php?filename=download_data/DRAMP3.0_new/synthetic_amps.txt",
+    "downloaded_utc": "2026-11-13T22:34:46Z",
+    "bytes": 2476646,
+    "sha256": "2f31a25034c07320daab86eaa073f7c88c0f4164e45c2adb21fdea79b7f2adad",
+    "note": ""
+  },
+  {
+    "file": "data/raw/dbaasp/peptides_list.json",
+    "source": "DBAASP",
+    "url": "https://dbaasp.org/peptides",
+    "downloaded_utc": "2026-11-14T10:06:20Z",
+    "bytes": 7878719,
+    "sha256": "fce4de0a5f93cd4d0834a30d21ff81c61b3d0b4ce9b2bea9a1b90be8d7c99ea9",
+    "note": "list view, 25542 entries"
+  }
+]
