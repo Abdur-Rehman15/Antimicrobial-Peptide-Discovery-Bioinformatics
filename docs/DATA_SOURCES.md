@@ -37,22 +37,27 @@ date and SHA-256 in `data/MANIFEST.json` (committed). Rebuild with
 6. **DRAMP availability.** `https` timed out in testing and `http` worked, but both timed out at
    other moments. If the site is down, re-run later.
 
-## DBAASP detail data (crawl of 17,886 candidate peptides)
+## DBAASP detail data (complete: 17,886 candidate peptides)
 
-Candidates: single-chain, standard amino acids, 8-50 aa. Stored as gzip JSON per peptide in
-`data/raw/dbaasp/details/` (resumable: `python -m amp_triage.data.dbaasp_details`).
+Candidates: single-chain, standard amino acids, 8-50 aa. Stored untouched as gzip JSON, one file
+per peptide, in `data/raw/dbaasp/details/` (resumable: `python -m amp_triage.data.dbaasp_details`).
+All 17,886 files were checked: none corrupt, ids match. A burst of 186 connection errors during
+the run was fixed by a second pass over the missing ids.
 
-First look at 400 records (to be re-checked on the full set):
-- **Every record has activity measurements**, but a measurement is not a verdict: DBAASP records
-  weak results too (e.g. MIC of 100+ µM). "Positive" needs an explicit threshold on MIC.
-  Measure types seen: MIC (most), IC50, MBC, LD50, LC50. Units are µg/ml or µM, so values must
-  be converted to one unit before thresholding.
-- **Mostly synthetic peptides** (374 of 400 are "Synthetic", 26 "Ribosomal"). That differs from
+Findings on the full set:
+- **Almost all have activity measurements** (only 296, or 1.7%, have none), but a measurement is
+  not a verdict: DBAASP records weak results too. "Positive" needs an explicit threshold on MIC.
+  Measure types: MIC (101,688 entries), MBC, IC50, LC, MIC50, MFC. Units are µM or µg/ml, and
+  8,441 entries have **no unit at all**, so they cannot be converted and must be dropped.
+- **84% are synthetic** (15,001 synthetic, 2,854 ribosomal, 31 nonribosomal). That differs from
   the natural encrypted peptides this project searches for, and designed peptides can have
-  idealised, easy-to-spot patterns. Natural and synthetic positives should be tracked separately
-  and the effect of including synthetic ones tested.
-- **231 of 400 have a C-terminal amide.** This supports reading HAPPENN's `cTer` flag as
-  C-terminal amidation, but that is still an inference.
-- **Hemolysis data exists in a structured form** (185 of 400 have hemolytic/cytotoxic entries,
-  with concentration, unit and target cell), so the HAPPENN rule could in principle be applied
-  to newer DBAASP data to extend HAPPENN. Optional.
+  idealised patterns. Natural and synthetic positives should be tracked separately, and the
+  effect of including synthetic ones tested.
+- **1,399 sequences contain lowercase letters, which DBAASP uses for D-amino acids.** A
+  sequence-only model cannot represent these, so they are excluded at cleaning time.
+- **8,407 have a C-terminal modification** (mostly amide). This supports reading HAPPENN's `cTer`
+  flag as C-terminal amidation, but that is still an inference.
+- **Structured hemolysis data exists for 10,397 peptides (58%), 9,418 of them on erythrocytes**,
+  with concentration, unit and cell type. In principle the HAPPENN rule could be applied to it to
+  extend HAPPENN. Optional.
+- 10,114 peptides link to a UniProt entry (useful for telling natural from designed peptides).
