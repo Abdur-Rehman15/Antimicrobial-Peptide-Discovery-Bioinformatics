@@ -117,3 +117,30 @@ class LogisticRecalibrator:
 
     def apply(self, p) -> np.ndarray:
         return sigmoid(self.intercept + self.slope * logit(p))
+
+
+@dataclass(frozen=True)
+class ActivityCalibration:
+    """Raw activity score -> calibrated probability for an assumed share of AMP windows.
+
+    The same arithmetic the pipeline's `Models.activity_probability` uses, without the heavy
+    models, so a server can re-rank saved results (new rarity, new weights) cheaply.
+    """
+
+    recalibrator: LogisticRecalibrator = LogisticRecalibrator()
+    training_prevalence: float | None = None
+
+    def activity_probability(self, score, prevalence: float) -> np.ndarray:
+        p = self.recalibrator.apply(score)
+        if self.training_prevalence is not None:
+            p = shift_prior(p, self.training_prevalence, prevalence)
+        return p
+
+    @classmethod
+    def from_json(cls, path) -> ActivityCalibration:
+        import json
+        from pathlib import Path
+
+        saved = json.loads(Path(path).read_text())
+        return cls(LogisticRecalibrator(saved["intercept"], saved["slope"]),
+                   float(saved["pi_train"]))

@@ -121,3 +121,21 @@ def test_purge_works_when_the_pair_is_listed_the_other_way_round():
     pa, pb = np.array([3]), np.array([0])
     kept = purge_training_rows(np.array([0, 1, 2]), np.array([3, 4, 5]), pa, pb, 6)
     assert kept.tolist() == [1, 2]
+
+
+def test_activity_calibration_matches_the_two_steps(tmp_path):
+    import json
+
+    from amp_triage.models.calibration import ActivityCalibration
+
+    path = tmp_path / "cal.json"
+    path.write_text(json.dumps({"intercept": 1.2, "slope": 0.5, "pi_train": 0.03}))
+    calibration = ActivityCalibration.from_json(path)
+    score = np.array([0.01, 0.4, 0.99])
+    expected = shift_prior(LogisticRecalibrator(1.2, 0.5).apply(score), 0.03, 1e-3)
+    assert calibration.activity_probability(score, 1e-3) == pytest.approx(expected)
+    # with no training prevalence it is just the recalibrator
+    plain = ActivityCalibration(LogisticRecalibrator(1.2, 0.5))
+    assert plain.activity_probability(score, 1e-3) == pytest.approx(
+        LogisticRecalibrator(1.2, 0.5).apply(score)
+    )

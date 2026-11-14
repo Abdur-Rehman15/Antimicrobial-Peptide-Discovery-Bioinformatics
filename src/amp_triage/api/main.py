@@ -1,10 +1,5 @@
-"""FastAPI entry point. Endpoints are added in the API phase."""
+"""FastAPI entry point:  uvicorn amp_triage.api.main:app --reload"""
 
-from fastapi import FastAPI
+from amp_triage.api.app import create_app
 
-app = FastAPI(title="AMP Triage", version="0.1.0")
-
-
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+app = create_app()
