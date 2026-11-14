@@ -9,6 +9,15 @@
 Steps 4 and 5 only touch the shortlist, so they take seconds; step 1 is the cost: about 23,000
 windows per second with the current activity model, so one protein takes about a second and a
 whole proteome is an offline job.
+
+Scores and probabilities. The models' raw scores are not probabilities (the activity model's
+calibration slope is 0.52). Each candidate therefore carries both:
+    activity_score / hemolysis_score   the raw model scores
+    activity / hemolysis_risk          calibrated (scripts/calibrate_scores.py)
+The calibrated `activity` also depends on an ASSUMED rarity: "if 1 window in 1,000 were an AMP".
+The real rarity is unknown; 1 in 1,000 is the setting the calibration was checked at (1 in 100
+too; 1 in 10,000 is too noisy to check). Calibration is monotone, so the shortlist and the order
+by raw score do not depend on it; the ranking, which multiplies the numbers, does.
 """
 
 from __future__ import annotations
@@ -16,23 +25,27 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import joblib
+import numpy as np
 import pandas as pd
 
 from amp_triage import config
 from amp_triage.candidates.window_features import iter_proteome_chunks
 from amp_triage.features.descriptors import FEATURE_NAMES, compute_descriptors
+from amp_triage.models.calibration import LogisticRecalibrator, shift_prior
 from amp_triage.novelty.reference import load_known_amps
 from amp_triage.novelty.search import NoveltyIndex, classify
 from amp_triage.pipeline.merge import merge_overlaps
 from amp_triage.pipeline.rank import RankSettings, rank_candidates
 from amp_triage.pipeline.scan import scan_proteome
 
+DEFAULT_PREVALENCE = 1e-3
 OUTPUT_COLUMNS = [
-    "rank", "accession", "start", "end", "length", "sequence", "activity", "hemolysis_risk",
-    "novelty_class", "max_similarity", "closest_known", "closest_id", "rank_score",
+    "rank", "accession", "start", "end", "length", "sequence", "activity_score", "activity",
+    "hemolysis_score", "hemolysis_risk", "novelty_class", "max_similarity", "closest_known",
+    "closest_id", "rank_score",
 ]  # fmt: skip
 Progress = Callable[[float, str], None]
 
@@ -45,17 +58,39 @@ class Models:
     hemolysis: object  # predict_proba on the 35 descriptors
     novelty: NoveltyIndex
     related_cutoff: float  # similarity at or above this counts as related (see novelty/search)
+    activity_recalibrator: LogisticRecalibrator = field(default_factory=LogisticRecalibrator)
+    training_prevalence: float | None = None  # positives' share when the model was trained
+    hemolysis_recalibrator: LogisticRecalibrator = field(default_factory=LogisticRecalibrator)
 
     @classmethod
     def load(cls) -> Models:
+        saved = config.MODELS_DIR
+        for name in ("activity_calibration.json", "hemolysis_calibration.json"):
+            if not (saved / name).exists():
+                raise FileNotFoundError(f"{saved / name} missing: run scripts/calibrate_scores.py")
+        act = json.loads((saved / "activity_calibration.json").read_text())
+        hem = json.loads((saved / "hemolysis_calibration.json").read_text())
         known = load_known_amps()
         calibration = json.loads((config.ROOT / "reports" / "novelty_calibration.json").read_text())
         return cls(
-            activity=joblib.load(config.MODELS_DIR / "activity_final.joblib"),
-            hemolysis=joblib.load(config.MODELS_DIR / "hemolysis_final.joblib"),
+            activity=joblib.load(saved / "activity_final.joblib"),
+            hemolysis=joblib.load(saved / "hemolysis_final.joblib"),
             novelty=NoveltyIndex(known.sequence, known.ids),
             related_cutoff=float(calibration["related_cutoff"]),
+            activity_recalibrator=LogisticRecalibrator(act["intercept"], act["slope"]),
+            training_prevalence=float(act["pi_train"]),
+            hemolysis_recalibrator=LogisticRecalibrator(hem["intercept"], hem["slope"]),
         )
+
+    def activity_probability(self, score, prevalence: float = DEFAULT_PREVALENCE) -> np.ndarray:
+        """Raw activity score -> calibrated probability if `prevalence` of windows were AMPs."""
+        p = self.activity_recalibrator.apply(score)
+        if self.training_prevalence is not None:
+            p = shift_prior(p, self.training_prevalence, prevalence)
+        return p
+
+    def hemolysis_probability(self, score) -> np.ndarray:
+        return self.hemolysis_recalibrator.apply(score)
 
 
 @dataclass
@@ -64,23 +99,32 @@ class PipelineResult:
     n_proteins: int
     n_windows: int  # valid windows that were scored
     seconds: float
+    prevalence: float = DEFAULT_PREVALENCE
 
 
 def _clean(sequence: str) -> str:
     return "".join(sequence.split()).replace("*", "").upper()
 
 
+def with_prevalence(table: pd.DataFrame, models: Models, prevalence: float) -> pd.DataFrame:
+    """Recompute the calibrated `activity` for another assumed rarity (cheap: no rescanning)."""
+    out = table.copy()
+    out["activity"] = models.activity_probability(out.activity_score.to_numpy(float), prevalence)
+    return out
+
+
 def evaluate_candidates(candidates: pd.DataFrame, models: Models) -> pd.DataFrame:
-    """Add hemolysis risk and the novelty columns to merged candidates (needs `sequence`)."""
+    """Add hemolysis and novelty columns to merged candidates (needs `sequence`)."""
     out = candidates.copy()
     if out.empty:
-        for col in ("hemolysis_risk", "max_similarity"):
+        for col in ("hemolysis_score", "hemolysis_risk", "max_similarity"):
             out[col] = pd.Series(dtype=float)
         for col in ("novelty_class", "closest_known", "closest_id"):
             out[col] = pd.Series(dtype=object)
         return out
     X = compute_descriptors(out.sequence.tolist())[FEATURE_NAMES].to_numpy()
-    out["hemolysis_risk"] = models.hemolysis.predict_proba(X)[:, 1]
+    out["hemolysis_score"] = models.hemolysis.predict_proba(X)[:, 1]
+    out["hemolysis_risk"] = models.hemolysis_probability(out.hemolysis_score.to_numpy())
     hits = models.novelty.search(out.sequence.tolist())
     out["max_similarity"] = hits.max_similarity.values
     out["closest_known"] = hits.closest_known.values
@@ -97,6 +141,7 @@ def run_pipeline(
     max_overlap: float = 0.5,
     keep_per_length: int = 2000,
     settings: RankSettings | None = None,
+    prevalence: float = DEFAULT_PREVALENCE,
     progress: Progress | None = None,
 ) -> PipelineResult:
     """Run proteins through the whole pipeline. Accessions must be unique."""
@@ -130,13 +175,20 @@ def run_pipeline(
     ]
     merged["end"] = merged.start + merged.length  # 0-based, exclusive
     merged["start"] = merged.start + 1  # shown 1-based, like UniProt
+    merged = merged.rename(columns={"activity": "activity_score"})
+    raw = merged.activity_score.to_numpy(float)
+    merged["activity"] = models.activity_probability(raw, prevalence)
 
     report(0.93, "hemolysis and novelty checks")
     table = rank_candidates(evaluate_candidates(merged, models), settings)
     table = table.reindex(columns=OUTPUT_COLUMNS)
     report(1.0, "done")
     return PipelineResult(
-        table=table, n_proteins=len(seqs), n_windows=n_windows, seconds=time.time() - started
+        table=table,
+        n_proteins=len(seqs),
+        n_windows=n_windows,
+        seconds=time.time() - started,
+        prevalence=prevalence,
     )
 
 

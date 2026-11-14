@@ -4,6 +4,7 @@ import pytest
 
 from amp_triage.candidates.windows import Proteome
 from amp_triage.features.descriptors import FEATURE_NAMES, compute_descriptors
+from amp_triage.models.calibration import LogisticRecalibrator, shift_prior
 from amp_triage.novelty.search import NoveltyIndex
 from amp_triage.pipeline import (
     Models,
@@ -12,6 +13,7 @@ from amp_triage.pipeline import (
     rank_candidates,
     run_pipeline,
     scan_proteome,
+    with_prevalence,
 )
 
 COL = {name: k for k, name in enumerate(FEATURE_NAMES)}
@@ -250,3 +252,49 @@ def test_progress_goes_from_zero_to_one(models):
                  progress=lambda f, m: seen.append(f))
     assert seen[0] == 0.0 and seen[-1] == 1.0
     assert seen == sorted(seen)
+
+
+# ---- calibration inside the pipeline ---------------------------------------------------
+
+
+@pytest.fixture
+def calibrated_models(models):
+    models.activity_recalibrator = LogisticRecalibrator(intercept=1.2, slope=0.5)
+    models.training_prevalence = 0.03
+    models.hemolysis_recalibrator = LogisticRecalibrator(intercept=0.1, slope=0.8)
+    return models
+
+
+def test_calibrated_columns_follow_the_formula(calibrated_models):
+    protein = make_protein(9, 120)
+    table = run_pipeline(["P"], [protein], calibrated_models, top_n=20, prevalence=1e-3).table
+    recal = LogisticRecalibrator(1.2, 0.5).apply(table.activity_score.to_numpy())
+    expected = shift_prior(recal, 0.03, 1e-3)
+    assert table.activity.to_numpy() == pytest.approx(expected)
+    assert table.hemolysis_risk.to_numpy() == pytest.approx(
+        LogisticRecalibrator(0.1, 0.8).apply(table.hemolysis_score.to_numpy())
+    )
+    assert (table.activity < table.activity_score).all()  # a rarer target lowers the number
+
+
+def test_calibration_does_not_change_the_shortlist(models, calibrated_models):
+    protein = make_protein(10, 150)
+    raw = run_pipeline(["P"], [protein], models, top_n=25).table
+    cal = run_pipeline(["P"], [protein], calibrated_models, top_n=25).table
+    assert sorted(zip(raw.start, raw.end, strict=True)) == sorted(
+        zip(cal.start, cal.end, strict=True)
+    )
+    best = cal.sort_values("activity_score").iloc[-1]
+    assert best.activity == cal.activity.max()  # monotone: same best candidate either way
+
+
+def test_with_prevalence_matches_running_at_that_prevalence(calibrated_models):
+    protein = make_protein(11, 120)
+    at_1e3 = run_pipeline(["P"], [protein], calibrated_models, top_n=15, prevalence=1e-3).table
+    at_1e4 = run_pipeline(["P"], [protein], calibrated_models, top_n=15, prevalence=1e-4).table
+    moved = with_prevalence(at_1e3, calibrated_models, 1e-4)
+    assert moved.activity.to_numpy() == pytest.approx(at_1e4.activity.to_numpy())
+    assert (moved.activity <= at_1e3.activity).all()
+    assert at_1e3.activity.to_numpy() == pytest.approx(
+        with_prevalence(at_1e3, calibrated_models, 1e-3).activity.to_numpy()
+    )
