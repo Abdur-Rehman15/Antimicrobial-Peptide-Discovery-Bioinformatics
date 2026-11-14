@@ -2,18 +2,18 @@
  "n_candidates": 300,
  "n_settings": 86,
  "overlap20": {
-  "median": 0.9,
-  "min": 0.4,
-  "p10": 0.5,
-  "share_at_least_0.8": 0.5697674418604651
+  "median": 0.825,
+  "min": 0.5,
+  "p10": 0.55,
+  "share_at_least_0.8": 0.6395348837209303
  },
  "overlap50_median": 0.84,
- "spearman_median": 0.9063456260625117,
+ "spearman_median": 0.9106761186235401,
  "by_group": {
   "overlap20": {
-   "exponents": 0.85,
+   "exponents": 0.8,
    "novelty factors": 1.0,
-   "rarity": 0.6
+   "rarity": 0.65
   },
   "overlap50": {
    "exponents": 0.82,
@@ -21,26 +21,26 @@
    "rarity": 0.72
   },
   "spearman": {
-   "exponents": 0.8906267847420526,
-   "novelty factors": 0.983266036289292,
-   "rarity": 0.8827453638373759
+   "exponents": 0.8971001900021112,
+   "novelty factors": 0.9810157890643227,
+   "rarity": 0.8807100078889765
   }
  },
- "activity_only_overlap20": 0.4,
+ "activity_only_overlap20": 0.5,
  "composition_top20": {
   "default": {
    "known": 0,
    "related": 0,
    "novel": 20,
-   "mean_hemolysis_risk": 0.10676026560822967,
-   "mean_activity": 0.9040017422005956
+   "mean_hemolysis_risk": 0.12007530162470284,
+   "mean_activity": 0.9029125943298716
   },
   "activity only": {
    "known": 0,
-   "related": 2,
-   "novel": 18,
-   "mean_hemolysis_risk": 0.29324795147345045,
-   "mean_activity": 0.968371166079409
+   "related": 4,
+   "novel": 16,
+   "mean_hemolysis_risk": 0.3189106303193873,
+   "mean_activity": 0.954624528179643
   }
  }
 }

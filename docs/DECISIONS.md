@@ -181,3 +181,35 @@ Candidate generation instead computes the full descriptor set for every window o
 and lets the main model decide. This needs the descriptors to be computed in bulk from running
 totals, which is built in `candidates/windows.py` (`window_descriptors`) and tested against the
 per-peptide code in `features/descriptors.py`.
+
+
+## Decision: negatives that look like the windows a scan produces (version 2)
+
+**Problem found.** Scanning 300 random human proteins (6.4 million windows) with the first model
+showed that windows of 36-50 residues passed the score thresholds 3.6 times (1 in 1,000
+threshold) and 6.9 times (1 in 10,000) as often as the training negatives; 21-35 residues 2.2 and
+3.4 times. Cause: the negatives copied the positives' lengths (13% were 36-50 residues, 35% of
+scan windows are), and they came from all organisms. The short-peptide skew seen in the top of
+the ranking was a counting effect (isolated short hot spots each count as one candidate, long
+flagged stretches merge into one); short windows themselves were not over-flagged.
+
+**Change.** Negative window lengths are drawn evenly over 8-50, and about 70% of the negative
+proteins are mammalian (all 41,928 non-human mammalian proteins in the pool; the rest from other
+organisms). Positives, splits and hyperparameters are unchanged; the model was retrained, the
+calibration redone, and the test split scored once more (it has new negatives).
+
+**Result.** Human windows now pass at 0.87 times (36-50), 1.09 (21-35), 2.06 (13-20) and 1.35
+(8-12) the training rate at the 1-in-1,000 threshold; overall 1.23 (was 2.41), and 1.11 (was
+3.98) at 1 in 10,000.
+
+**Costs, stated plainly.**
+* The model now gives long windows a lower prior, so it finds fewer long AMPs: recall of
+  36-50 residue AMPs at the 1-in-1,000 threshold fell from 56% to 39%.
+* The 13-20 residue band passes about twice as often as the training rate (was 1.4 and 1.1).
+* Test numbers are not comparable with version 1: the test negatives changed (more long windows,
+  mostly mammalian), so PR AUC and recall at a fixed false-alarm rate dropped (natural PR AUC
+  0.575 to 0.475) while ROC AUC did not (0.933 to 0.934).
+* Mammalian negatives include orthologues of human proteins. Windows sharing a 7-residue
+  stretch with any known AMP are dropped, but a close relative of a held-out human peptide
+  can remain as a negative, which can only make the human hold-out result more pessimistic.
+* Hyperparameters were chosen on version 1 data and not re-tuned.

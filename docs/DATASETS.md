@@ -10,19 +10,24 @@ Built by `python scripts/build_datasets.py` (about 10 minutes). Both files are i
 `group` is for grouped cross-validation: a cluster id (`c123`) for peptides and a protein
 accession for random windows, so related rows never straddle a fold.
 
-## Activity dataset: `activity_dataset.csv` (362,875 rows)
+## Activity dataset: `activity_dataset.csv` (362,907 rows)
 
 | split | positives | of which natural | negatives | negatives per positive |
 |---|---|---|---|---|
 | train | 7,299 | 2,237 | 145,980 | 20 |
-| val | 1,066 | 643 | 106,571 | 100 |
-| test | 1,003 | 637 | 100,268 | 100 |
+| val | 1,066 | 643 | 106,592 | 100 |
+| test | 1,003 | 637 | 100,279 | 100 |
 | human | 688 | 239 | none (see below) | |
 
 * **Positives:** the 12,075 cleaned active peptides (MIC <= 32 uM), split by similarity
   (threshold 0.7) with no similar pair across splits; 2,019 dropped by the purge.
-* **Negatives:** random windows from 60,000 non-human, non-antimicrobial proteins. Each protein
-  feeds one split only. Lengths follow the positives' lengths. No window shares a 7-residue
+* **Negatives:** random windows from 60,000 non-human, non-antimicrobial proteins, 41,928 of them
+  mammalian (all that exist in the pool) and the rest from other organisms. Each protein feeds
+  one split only. **Window lengths are spread evenly over 8-50**, like the windows of a scan of a
+  proteome. (The first version copied the positives' lengths: 13% of negatives were 36-50
+  residues long, against 35% of the windows in a scan, and human proteins then passed the score
+  threshold 3.6-6.9 times more often than the training negatives. The even lengths cut that
+  to 0.9-1.1 times. See DECISIONS.md.) No window shares a 7-residue
   stretch with any known AMP.
 * **The human split is positives only.** Its negatives are the other windows of the human
   proteome, scanned in the final validation, so no human protein is used anywhere in training.

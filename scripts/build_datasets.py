@@ -22,11 +22,12 @@ from amp_triage.data.datasets import (
     with_descriptors,
 )
 from amp_triage.data.happenn import load_happenn, pdf_to_text
-from amp_triage.data.negatives import kmer_set, load_pool, sample_windows
+from amp_triage.data.negatives import kmer_set, load_mixed_pool, sample_windows
 
 SEED = 1
 NEG_PER_POSITIVE = {"train": 20, "val": 100, "test": 100}
 MAX_PROTEINS = 60000
+MAMMAL_SHARE = 0.7  # share of negative proteins that are mammalian (all 41,928 are used)
 
 all_pos = pd.read_csv(config.PROCESSED_DIR / "positives.csv")
 pos_split = pd.read_csv(config.PROCESSED_DIR / "positives_split.csv")
@@ -37,14 +38,19 @@ human_acc = {
     r.id.split("|")[1]
     for r in SeqIO.parse(str(config.RAW_DIR / "uniprot" / "human_reviewed.fasta"), "fasta")
 }
-accs, seqs = load_pool(
-    config.RAW_DIR / "uniprot" / "swissprot_not_amp.fasta", human_acc, MAX_PROTEINS, seed=0
+accs, seqs, n_mammal = load_mixed_pool(
+    config.RAW_DIR / "uniprot" / "swissprot_not_amp.fasta", human_acc, MAX_PROTEINS,
+    MAMMAL_SHARE, seed=0,
 )
+print(f"negative proteins: {len(accs):,} ({n_mammal:,} mammalian)")
 banned = kmer_set(all_pos.sequence)
+# every length 8-50 equally often, like the windows of a scan (copying the positives' lengths
+# left only 13% of negatives long, against 35% of the windows in a scan)
+scan_lengths = np.arange(config.MIN_PEPTIDE_LEN, config.MAX_PEPTIDE_LEN + 1)
 frames = []
 for split, ratio in NEG_PER_POSITIVE.items():
     n = ratio * int((pos_split.split == split).sum())
-    frames.append(sample_windows(accs, seqs, all_pos.length.values, n, split, banned, seed=SEED))
+    frames.append(sample_windows(accs, seqs, scan_lengths, n, split, banned, seed=SEED))
 negatives = pd.concat(frames, ignore_index=True)
 before = len(negatives)
 # the same short window can occur in proteins of two splits: keep the first, so no sequence is

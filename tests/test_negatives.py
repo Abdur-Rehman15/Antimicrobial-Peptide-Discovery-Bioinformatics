@@ -3,6 +3,7 @@ import numpy as np
 from amp_triage.candidates.stage1 import Stage1Model
 from amp_triage.data.negatives import (
     kmer_set,
+    load_mixed_pool,
     protein_split,
     sample_windows,
     shares_kmer,
@@ -67,3 +68,51 @@ def test_stage1_filter_keeps_only_windows_that_pass():
     df = sample_windows(accs, seqs, np.array([12, 16]), 40, "train", set(), stage1=model, seed=4)
     assert len(df) > 0
     assert (model.scores(df.sequence.tolist()) >= 2.0).all()
+
+
+def write_fasta(path, records):
+    """records: (accession, organism id, sequence)"""
+    lines = []
+    for acc, ox, seq in records:
+        lines += [f">sp|{acc}|X_{acc} protein OS=Some organism OX={ox} GN=g PE=1 SV=1", seq]
+    path.write_text("\n".join(lines) + "\n")
+
+
+def test_mixed_pool_takes_the_asked_mammal_share_and_never_human(tmp_path):
+    rng = np.random.default_rng(0)
+
+    def seq():
+        return "".join(rng.choice(list(D.AA), size=80))
+
+    records = (
+        [(f"M{i}", "10090", seq()) for i in range(70)]  # mouse
+        + [(f"B{i}", "83333", seq()) for i in range(70)]  # E. coli
+        + [(f"H{i}", "9606", seq()) for i in range(30)]  # human: must never appear
+        + [("EXCL", "10116", seq())]  # a rat protein on the exclude list
+    )
+    path = tmp_path / "pool.fasta"
+    write_fasta(path, records)
+    accs, seqs, n_mammal = load_mixed_pool(path, {"EXCL"}, 50, 0.7, seed=1)
+    assert len(accs) == len(seqs) == 50 and n_mammal == 35
+    assert sum(a.startswith("M") for a in accs) == 35 and sum(a.startswith("B") for a in accs) == 15
+    assert not any(a.startswith("H") or a == "EXCL" for a in accs)
+    assert (accs, seqs) == load_mixed_pool(path, {"EXCL"}, 50, 0.7, seed=1)[:2]  # reproducible
+
+
+def test_mixed_pool_fills_up_with_other_organisms_when_mammals_run_out(tmp_path):
+    rng = np.random.default_rng(1)
+    records = [(f"M{i}", "10090", "".join(rng.choice(list(D.AA), 60))) for i in range(5)]
+    records += [(f"B{i}", "83333", "".join(rng.choice(list(D.AA), 60))) for i in range(40)]
+    path = tmp_path / "pool.fasta"
+    write_fasta(path, records)
+    accs, _, n_mammal = load_mixed_pool(path, set(), 30, 0.7, seed=2)
+    assert n_mammal == 5 and len(accs) == 30  # all 5 mammals, 25 others
+
+
+def test_even_length_pool_gives_every_length_about_equally_often():
+    accs, seqs = proteins(300, 7)
+    lengths = np.arange(8, 51)
+    df = sample_windows(accs, seqs, lengths, n=4300, split="train", banned_kmers=set(), seed=3)
+    counts = df.length.value_counts()
+    assert set(counts.index) == set(range(8, 51))
+    assert counts.max() < 2.0 * counts.min() + 20  # roughly 100 per length

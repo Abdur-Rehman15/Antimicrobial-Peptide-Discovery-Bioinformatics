@@ -1,0 +1,33 @@
+{
+ "threshold": 0.9971365043681211,
+ "n_hits": 2565,
+ "hits_by_band": {
+  "8-12": 0.058089668615984406,
+  "13-20": 0.050682261208576995,
+  "21-35": 0.30058479532163745,
+  "36-50": 0.5906432748538012
+ },
+ "best_window_rule": {
+  "8-12": 0.4520547945205479,
+  "13-20": 0.2054794520547945,
+  "21-35": 0.1506849315068493,
+  "36-50": 0.1917808219178082
+ },
+ "short_candidates": {
+  "n": 33,
+  "share_with_a_flagged_window_of_21_plus_in_region": 0.0,
+  "median_longest_flagged_in_region": 10.0,
+  "median_flagged_windows_in_region": 2.0
+ },
+ "longest_within_margin_rule": {
+  "8-12": 0.3611111111111111,
+  "13-20": 0.2916666666666667,
+  "21-35": 0.09722222222222222,
+  "36-50": 0.25
+ },
+ "median_length": {
+  "hits": 38.0,
+  "best_window_rule": 13.0,
+  "longest_within_margin_rule": 15.0
+ }
+}
