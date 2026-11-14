@@ -103,3 +103,56 @@ def sw_scores(
         float(gap_open + gap_extend),
         float(gap_extend),
     )
+
+
+class EncodedSet:
+    """A list of sequences encoded once, so many searches against it avoid re-encoding.
+
+    Used for all-vs-all comparisons (clustering) where the same targets are scored thousands
+    of times.
+    """
+
+    def __init__(self, sequences: Sequence[str]):
+        self.sequences = list(sequences)
+        encoded = [blosum62.encode(s) for s in self.sequences]
+        self.offsets = np.zeros(len(encoded) + 1, dtype=np.int64)
+        np.cumsum([len(e) for e in encoded], out=self.offsets[1:])
+        self.flat = np.concatenate(encoded) if encoded else np.zeros(0, dtype=np.int64)
+        self._sub = blosum62.MATRIX.astype(np.float64)
+
+    def __len__(self) -> int:
+        return len(self.sequences)
+
+    def scores_against(
+        self,
+        query_index: int,
+        first: int = 0,
+        gap_open: float = DEFAULT_GAP_OPEN,
+        gap_extend: float = DEFAULT_GAP_EXTEND,
+    ) -> np.ndarray:
+        """Score sequence `query_index` against sequences first..end (parallel)."""
+        a = self.flat[self.offsets[query_index] : self.offsets[query_index + 1]]
+        base = self.offsets[first]
+        return _score_many(
+            a,
+            self.flat[base:],
+            self.offsets[first:] - base,
+            self._sub,
+            float(gap_open + gap_extend),
+            float(gap_extend),
+        )
+
+    def self_scores(self) -> np.ndarray:
+        """Each sequence's score against itself (the best it could possibly do)."""
+        return np.array(
+            [
+                _score_one(
+                    self.flat[self.offsets[i] : self.offsets[i + 1]],
+                    self.flat[self.offsets[i] : self.offsets[i + 1]],
+                    self._sub,
+                    float(DEFAULT_GAP_OPEN + DEFAULT_GAP_EXTEND),
+                    float(DEFAULT_GAP_EXTEND),
+                )
+                for i in range(len(self))
+            ]
+        )
