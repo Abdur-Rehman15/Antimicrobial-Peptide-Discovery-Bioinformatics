@@ -88,6 +88,8 @@ export interface ProteinDetail {
   name: string
   length: number
   sequence: string
+  /** best activity of any window covering each residue; empty for runs scanned before this existed */
+  profile?: number[]
   candidates: Pick<
     Candidate,
     | 'rank'

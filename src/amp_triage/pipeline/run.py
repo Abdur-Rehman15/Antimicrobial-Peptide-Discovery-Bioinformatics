@@ -100,6 +100,8 @@ class PipelineResult:
     n_windows: int  # valid windows that were scored
     seconds: float
     prevalence: float = DEFAULT_PREVALENCE
+    # raw activity score of the best window covering each residue, per shortlisted protein
+    profiles: dict[str, list[float]] = field(default_factory=dict)
 
 
 def _clean(sequence: str) -> str:
@@ -154,10 +156,17 @@ def run_pipeline(
     report = progress or (lambda fraction, message: None)
 
     pools, n_windows, done = [], 0, 0
+    profiles: dict[str, np.ndarray] = {}
     total_residues = max(sum(len(s) for s in seqs), 1)
     report(0.0, "scanning windows")
     for chunk in iter_proteome_chunks(accessions, seqs):
-        hits, n = scan_proteome(chunk, models.activity, keep_per_length=keep_per_length)
+        shape = np.zeros(len(chunk.codes), dtype=np.float32)
+        hits, n = scan_proteome(
+            chunk, models.activity, keep_per_length=keep_per_length, profile=shape
+        )
+        for i, acc in enumerate(chunk.accessions):
+            at, length = int(chunk.starts[i]), int(chunk.lengths[i])
+            profiles[acc] = shape[at : at + length]
         pools.append(hits)
         n_windows += n
         done += chunk.n_residues
@@ -183,12 +192,15 @@ def run_pipeline(
     table = rank_candidates(evaluate_candidates(merged, models), settings)
     table = table.reindex(columns=OUTPUT_COLUMNS)
     report(1.0, "done")
+    # only the shortlisted proteins are ever drawn, so only their profiles are worth keeping
+    shown = set(table.accession) if not table.empty else set()
     return PipelineResult(
         table=table,
         n_proteins=len(seqs),
         n_windows=n_windows,
         seconds=time.time() - started,
         prevalence=prevalence,
+        profiles={a: np.round(profiles[a], 4).tolist() for a in shown if a in profiles},
     )
 
 

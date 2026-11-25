@@ -1,4 +1,4 @@
-import { momentDirection, residueClass, wheelPositions } from './wheel'
+import { momentDirection, wheelPositions } from './wheel'
 
 describe('helical wheel geometry', () => {
   it('puts residue 1 at the top and turns 100 degrees per residue', () => {
@@ -11,15 +11,10 @@ describe('helical wheel geometry', () => {
     for (const r of p) expect(Math.hypot(r.x, r.y)).toBeCloseTo(10)
   })
 
-  it('classifies residues', () => {
-    expect(residueClass('K')).toBe('positive')
-    expect(residueClass('R')).toBe('positive')
-    expect(residueClass('D')).toBe('negative')
-    expect(residueClass('E')).toBe('negative')
-    expect(residueClass('L')).toBe('hydrophobic')
-    expect(residueClass('W')).toBe('hydrophobic')
-    expect(residueClass('S')).toBe('polar')
-    expect(residueClass('G')).toBe('polar')
+  it('labels each placed residue with the class the sequence display uses', () => {
+    expect(wheelPositions('KDLG', 10).map((r) => r.cls)).toEqual([
+      'basic', 'acidic', 'oily', 'other',
+    ])
   })
 
   it('points the moment at a single oily residue', () => {

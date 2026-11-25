@@ -2,16 +2,7 @@
 // 100 degrees apart (3.6 residues per turn). An AMP typically has an oily side and a charged
 // side; the wheel makes that visible.
 
-export type ResidueClass = 'hydrophobic' | 'positive' | 'negative' | 'polar'
-
-const HYDROPHOBIC = new Set('ACFILMVW')
-
-export function residueClass(aa: string): ResidueClass {
-  if (aa === 'K' || aa === 'R') return 'positive'
-  if (aa === 'D' || aa === 'E') return 'negative'
-  if (HYDROPHOBIC.has(aa)) return 'hydrophobic'
-  return 'polar'
-}
+import { type TextClass, textClass } from './residues'
 
 // Eisenberg consensus hydrophobicity scale, the one the backend's helical moment uses.
 const EISENBERG: Record<string, number> = {
@@ -25,7 +16,7 @@ export const HELIX_ANGLE = 100
 export interface WheelResidue {
   index: number // 0-based position in the peptide
   aa: string
-  cls: ResidueClass
+  cls: TextClass
   angle: number // degrees, 0 = straight up, clockwise
   x: number
   y: number
@@ -39,7 +30,7 @@ export function wheelPositions(sequence: string, radius: number, cx = 0, cy = 0)
     return {
       index,
       aa,
-      cls: residueClass(aa),
+      cls: textClass(aa),
       angle,
       x: cx + radius * Math.sin(radians),
       y: cy - radius * Math.cos(radians),

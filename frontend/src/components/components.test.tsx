@@ -8,10 +8,11 @@ import type { View } from '../api/types'
 import { BandChip, NoveltyChip, StatusChip } from './Chips'
 import { CompositionChart } from './CompositionChart'
 import { HelicalWheel } from './HelicalWheel'
-import { ProteinMap, assignLanes, tickStep } from './ProteinMap'
+import { ProteinMap, assignLanes, ridgeMax, tickStep } from './ProteinMap'
 import { ResultsControls } from './ResultsControls'
 import { ResultsTable } from './ResultsTable'
 import { ScatterPlot, logRange } from './ScatterPlot'
+import { Sequence, SequenceContext, SequenceHero, SequenceKey } from './Sequence'
 
 function Where() {
   const { pathname, search } = useLocation()
@@ -70,12 +71,12 @@ describe('ResultsTable', () => {
     inRouter(<ResultsTable runId="r1" rows={rows3} prevalence={0.001} />)
     const long = screen.getByTitle('GSRKNMACYCRIPACIAGERRYGTCIYQGRLWAFCC')
     expect(long.textContent).toContain('…')
-    expect(long.textContent!.length).toBeLessThanOrEqual(22)
+    expect(long.textContent!.length).toBeLessThanOrEqual(24)
   })
 
   it('opens the candidate when a row is clicked', async () => {
     inRouter(<ResultsTable runId="r1" rows={rows3} prevalence={0.001} />)
-    await userEvent.click(screen.getByText('GKKVLGAFSDGLA').closest('tr')!)
+    await userEvent.click(screen.getByRole('link', { name: 'GKKVLGAFSDGLA' }).closest('tr')!)
     expect(screen.getByTestId('where').textContent).toContain('accession=P68871&start=65&end=77')
   })
 
@@ -293,8 +294,27 @@ describe('peptide figures', () => {
     expect(screen.getByRole('img')).toHaveAccessibleName(/Helical wheel of RRARVVWC/)
     for (const letter of ['R', 'A', 'V', 'W', 'C']) expect(screen.getAllByText(letter).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/^Residue \d+: /)).toHaveLength(8)
-    expect(screen.getByText('oily side')).toBeInTheDocument()
-    expect(screen.getByText('Positive (K, R)')).toBeInTheDocument()
+    // the wheel is turned so the oily face meets the drawn membrane
+    expect(screen.getByText('membrane')).toBeInTheDocument()
+    expect(screen.getByText('water')).toBeInTheDocument()
+    expect(screen.getByRole('img')).toHaveAccessibleName(/oily face points at a membrane/)
+    // the wheel speaks the same language as the sequence above it
+    expect(screen.getByText('Basic (K, R)')).toBeInTheDocument()
+    expect(screen.getByText('Oily (A C F I L M V W)')).toBeInTheDocument()
+  })
+
+  it('draws no membrane for a peptide with no oily side to point anywhere', () => {
+    // 18 residues sit at 18 evenly spaced angles, so identical ones cancel exactly
+    render(<HelicalWheel sequence={'A'.repeat(18)} />)
+    expect(screen.queryByText('membrane')).not.toBeInTheDocument()
+    expect(screen.getByText(/no oily side to speak of/)).toBeInTheDocument()
+  })
+
+  it('lists only the residue classes the peptide actually has', () => {
+    render(<HelicalWheel sequence="KKRR" />)
+    expect(screen.getByText('Basic (K, R)')).toBeInTheDocument()
+    expect(screen.queryByText('Acidic (D, E)')).not.toBeInTheDocument()
+    expect(screen.queryByText('Other')).not.toBeInTheDocument()
   })
 
   it('draws the composition with every amino acid and labels the tallest bar', () => {
@@ -303,5 +323,97 @@ describe('peptide figures', () => {
     expect(screen.getByRole('img')).toHaveAccessibleName(/most common is R at 38%/)
     expect(screen.getByText('38%')).toBeInTheDocument()
     for (const aa of 'ACDEFGHIKLMNPQRSTVWY') expect(screen.getAllByText(aa).length).toBeGreaterThan(0)
+  })
+})
+
+describe('sequences carry their chemistry', () => {
+  it('colours each residue by charge and shades the oily ones', () => {
+    const { container } = render(<Sequence sequence="KRDEAG" />)
+    const classes = [...container.querySelectorAll('.seq > span')].map((s) => s.className)
+    expect(classes).toEqual([
+      'res-basic', 'res-basic', 'res-acidic', 'res-acidic', 'res-oily', 'res-other',
+    ])
+    expect(container.querySelector('.seq')).toHaveTextContent('KRDEAG')
+  })
+
+  it('keeps the whole peptide in the tooltip when the shown text is shortened', () => {
+    render(<Sequence sequence="KRDE…WFLL" title="KRDEAAAAAAAAAAAAWFLL" />)
+    expect(screen.getByTitle('KRDEAAAAAAAAAAAAWFLL')).toBeInTheDocument()
+  })
+
+  it('makes the peptide the page heading and explains the colours once', () => {
+    render(
+      <>
+        <SequenceHero sequence="RRARVVWC" />
+        <SequenceKey />
+      </>,
+    )
+    expect(screen.getByRole('heading', { name: 'Peptide RRARVVWC' })).toBeInTheDocument()
+    for (const word of ['basic', 'acidic', 'oily']) {
+      expect(screen.getByText(word)).toBeInTheDocument()
+    }
+  })
+
+  it('marks the peptide inside its surroundings and shows where the protein was cut', () => {
+    const { container } = render(
+      <SequenceContext before="AAKL" peptide="KRWW" after="GGPE" truncatedStart truncatedEnd />,
+    )
+    const marked = [...container.querySelectorAll('.in-peptide')].map((e) => e.textContent).join('')
+    expect(marked).toBe('KRWW')
+    expect(container.querySelector('.seq-context')).toHaveTextContent('…AAKLKRWWGGPE…')
+  })
+
+  it('leaves out the ellipsis at a protein end', () => {
+    const { container } = render(
+      <SequenceContext
+        before="MA"
+        peptide="KRWW"
+        after="GG"
+        truncatedStart={false}
+        truncatedEnd={false}
+      />,
+    )
+    expect(container.querySelector('.seq-context')!.textContent).toBe('MAKRWWGG')
+  })
+})
+
+describe('the protein ridge', () => {
+  const rect = { left: 0, top: 0, width: 760, height: 300, right: 760, bottom: 300, x: 0, y: 0, toJSON: () => ({}) }
+  const withRidge = {
+    ...proteinDetail,
+    length: 40,
+    profile: [...Array(40)].map((_, i) => (i >= 18 && i < 26 ? 0.4 : 0.01)),
+  }
+
+  it('rounds the top of the activity axis to a readable number', () => {
+    expect(ridgeMax(0.045)).toBe(0.05)
+    expect(ridgeMax(0.4)).toBe(0.5)
+    expect(ridgeMax(0.21)).toBe(0.25)
+    expect(ridgeMax(0)).toBe(1)
+  })
+
+  it('draws the ridge and says what it is', () => {
+    const { container } = inRouter(<ProteinMap protein={withRidge} runId="r1" prevalence={0.001} />)
+    expect(container.querySelector('path[stroke="var(--accent)"]')).toBeInTheDocument()
+    expect(screen.getByText(/best score of any window covering each residue/)).toBeInTheDocument()
+    expect(screen.getByText(/highest 0.40 near residue 19/)).toBeInTheDocument()
+  })
+
+  it('reads out the residue under the pointer', () => {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect as DOMRect)
+    const { container } = inRouter(<ProteinMap protein={withRidge} runId="r1" prevalence={0.001} />)
+    fireEvent.pointerMove(container.querySelector('.chart')!, { clientX: 380, clientY: 40 })
+    const tip = screen.getByRole('tooltip')
+    expect(tip).toHaveTextContent(/Residue \d+/)
+    expect(tip).toHaveTextContent('Best window here')
+    fireEvent.pointerLeave(container.querySelector('.chart')!)
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('falls back to a plain bar for a run scanned before the ridge existed', () => {
+    const { container } = inRouter(<ProteinMap protein={proteinDetail} runId="r1" prevalence={0.001} />)
+    expect(container.querySelector('path[stroke="var(--accent)"]')).not.toBeInTheDocument()
+    expect(screen.getByText(/Overlapping regions sit on separate rows/)).toBeInTheDocument()
+    expect(screen.getAllByRole('link')).toHaveLength(2) // the candidates still draw
   })
 })

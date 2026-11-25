@@ -69,7 +69,11 @@ Each row has: `rank, accession, start, end` (1-based, inclusive), `length, seque
 `GET /api/runs/{id}/candidate?accession=&start=&end=` adds the 13 main descriptors, the amino
 acid composition, the full Smith-Waterman alignment against the closest known AMP, the protein
 context and short plain-language notes. `GET /api/runs/{id}/proteins[/{accession}]` lists the
-proteins and where their candidates sit, for a protein map.
+proteins and where their candidates sit. The single-protein form also returns `profile`: the
+calibrated activity of the best window covering each residue, in order, which is the shape of
+the signal along the protein. The shortlist cannot show that, because it keeps one window per
+region and says nothing about the stretches between them. It is empty for runs scanned before
+profiles were recorded.
 
 `GET /api/info` returns the formula, the limits, the test metrics of both models and the caveat
 below.

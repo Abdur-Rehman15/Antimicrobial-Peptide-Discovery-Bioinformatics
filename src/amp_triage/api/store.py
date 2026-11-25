@@ -3,6 +3,8 @@
     runs/<id>/meta.json       status, progress, counts, options, error
     runs/<id>/table.csv       the ranked candidates of the run (pipeline OUTPUT_COLUMNS)
     runs/<id>/proteins.json   {accession: {"name": ..., "length": ..., "sequence": ...}}
+    runs/<id>/profiles.json   {accession: [raw activity score per residue]}, for the drawn
+                              proteins only; absent for runs made before profiles existed
 
 Progress changes often, so it is kept in memory and written to disk only when the status
 changes. Precomputed runs (scripts/precompute_run.py) use the same folders and appear in the
@@ -88,13 +90,21 @@ class RunStore:
 
     # ---- results -------------------------------------------------------------------------
 
-    def save_result(self, run_id: str, table: pd.DataFrame, proteins: dict) -> None:
+    def save_result(
+        self, run_id: str, table: pd.DataFrame, proteins: dict, profiles: dict | None = None
+    ) -> None:
         folder = self.root / run_id
         table.to_csv(folder / "table.csv", index=False)
         (folder / "proteins.json").write_text(json.dumps(proteins), encoding="utf-8")
+        (folder / "profiles.json").write_text(json.dumps(profiles or {}), encoding="utf-8")
 
     def load_table(self, run_id: str) -> pd.DataFrame:
         return pd.read_csv(self.root / run_id / "table.csv", keep_default_na=True)
 
     def load_proteins(self, run_id: str) -> dict:
         return json.loads((self.root / run_id / "proteins.json").read_text(encoding="utf-8"))
+
+    def load_profiles(self, run_id: str) -> dict:
+        """Empty for a run scanned before profiles were recorded."""
+        path = self.root / run_id / "profiles.json"
+        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}

@@ -32,16 +32,24 @@ running, every page shows a red banner with that command.
   hemolysis band, length, protein). Every change re-ranks the saved shortlist on the server;
   nothing is scanned again. The whole view lives in the address, so a link reproduces it.
 * **Ranked list** (25 per page, keyboard-reachable links), **Activity vs safety** scatter
-  (activity on a log axis, hover finds the nearest dot, click opens it), **Proteins** (a map of
-  where the candidates sit along one protein).
+  (activity on a log axis, hover finds the nearest dot, click opens it), **Proteins** (a track
+  view: the *ridge* is the best score of any window covering each residue, on a square-root
+  scale so the quiet stretches stay visible, and under it the candidate regions that survived
+  merging).
 * **Export CSV** downloads the current view.
 
 ## Design rules it follows
 
+* **The sequence is the identity.** Residues are coloured by charge (blue basic, red acidic) and
+  the oily ones are the dark letters, so the two properties that make a peptide antimicrobial -
+  cationic and amphipathic - are readable in the letters themselves. The helical wheel uses the
+  same classification, so the two figures speak one language.
 * Colour never carries meaning alone: every colour has a word, hemolysis bands also an icon.
-* Charts use the validated categorical palette slots 1 to 3 (blue, orange, aqua) and the fixed
-  status colours; dark mode uses the same hues stepped for the dark surface. The ranked list is
-  the table view of every chart.
+* The novelty colours are **violet / amber / teal**. They were checked for colour blindness in
+  both themes with `palette` checks (worst pair dE 9.5 light, 11.6 dark, against a target of 8;
+  28.4 / 23.0 for normal vision against a floor of 15). They replace blue / orange / aqua, whose
+  dark steps failed that check: blue against green came out at dE 4.0. The ranked list is the
+  table view of every chart.
 * Charts are drawn at their real width (a scaled-down SVG shrinks its text and marks).
 * While data reloads, the previous result stays on screen, dimmed, instead of blanking.
 * The honest caveats are on the screen where the numbers are: the activity number is an

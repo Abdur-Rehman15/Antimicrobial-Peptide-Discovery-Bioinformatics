@@ -508,3 +508,27 @@ def test_the_built_dashboard_is_served_with_a_fallback_for_deep_links(tmp_path, 
 def test_without_a_built_dashboard_unknown_paths_are_plain_404(tmp_path, models):
     client = make_client(tmp_path, models, static_dir=tmp_path / "missing")
     assert client.get("/").status_code == 404
+
+
+def test_the_protein_view_carries_the_calibrated_score_profile(tmp_path, models):
+    calibration = ActivityCalibration(LogisticRecalibrator(1.2, 0.5), 0.03)
+    client = make_client(tmp_path, models, calibration=calibration)
+    run_id = start(client, TEXT)
+    body = client.get(f"/api/runs/{run_id}/proteins/P00001").json()
+    profile = body["profile"]
+    assert len(profile) == body["length"] == 150
+    assert all(0.0 <= p <= 1.0 for p in profile)
+    # the same calibration the table uses, so the curve and the rows agree
+    rarer = client.get(
+        f"/api/runs/{run_id}/proteins/P00001", params={"prevalence": 1e-4}
+    ).json()["profile"]
+    assert max(rarer) < max(profile)
+
+
+def test_a_run_from_before_profiles_existed_still_opens(tmp_path, models):
+    client = make_client(tmp_path, models)
+    run_id = start(client, TEXT)
+    (tmp_path / "runs" / run_id / "profiles.json").unlink()
+    body = client.get(f"/api/runs/{run_id}/proteins/P00001").json()
+    assert body["profile"] == []
+    assert body["length"] == 150

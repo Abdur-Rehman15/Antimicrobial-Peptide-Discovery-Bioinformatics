@@ -5,6 +5,11 @@ const grouped = new Intl.NumberFormat('en-US')
 export const count = (n: number | null | undefined): string =>
   n === null || n === undefined ? '-' : grouped.format(n)
 
+/** "1 protein", "12 proteins" - never "1 protein(s)". */
+export function plural(n: number, one: string, many = one + 's'): string {
+  return `${count(n)} ${n === 1 ? one : many}`
+}
+
 export const percent = (x: number, digits = 0): string => `${(x * 100).toFixed(digits)}%`
 
 /** A calibrated probability for display: 0.438, 0.024, <0.001. */

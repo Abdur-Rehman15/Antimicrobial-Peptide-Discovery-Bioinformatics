@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Run, View } from '../api/types'
-import { ErrorNotice, Meter, Note, Spinner, Stat } from '../components/Bits'
+import { ErrorNotice, Meter, Spinner } from '../components/Bits'
 import { StatusChip } from '../components/Chips'
 import { ProteinMap } from '../components/ProteinMap'
 import { ResultsControls } from '../components/ResultsControls'
@@ -11,7 +11,7 @@ import { ScatterPlot } from '../components/ScatterPlot'
 import { useAsync } from '../hooks/useAsync'
 import { useDebounced } from '../hooks/useDebounced'
 import { useRunStatus } from '../hooks/useRunStatus'
-import { count, duration, percent } from '../lib/format'
+import { count, duration, percent, plural } from '../lib/format'
 import { candidateLink } from '../lib/links'
 import { parseView, serializeView } from '../lib/view'
 
@@ -25,18 +25,15 @@ const TABS: [Tab, string][] = [
 
 function Progress({ run }: { run: Run }) {
   return (
-    <div className="card stack" style={{ maxWidth: 640 }}>
-      <div className="row spread">
-        <h2>{run.status === 'queued' ? 'Waiting for a free worker' : 'Scanning'}</h2>
-        <StatusChip state={run.status} />
-      </div>
+    <div className="card stack" style={{ maxWidth: 620 }}>
+      <h2>{run.status === 'queued' ? 'Waiting for a free worker' : 'Scanning'}</h2>
       <Meter value={run.progress} label="Run progress" big />
       <p aria-live="polite">
         <strong>{percent(run.progress)}</strong> · {run.message}
       </p>
       {run.n_proteins !== null && (
         <p className="muted">
-          {count(run.n_proteins)} proteins, {count(run.n_residues)} residues.
+          {plural(run.n_proteins, 'protein')}, {count(run.n_residues)} residues.
         </p>
       )}
       <p className="hint">This page updates by itself. You can leave it and come back from Runs.</p>
@@ -47,9 +44,10 @@ function Progress({ run }: { run: Run }) {
 function Results({ run }: { run: Run }) {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
-  const tab: Tab = (['list', 'chart', 'proteins'] as const).find((t) => t === params.get('tab')) ?? 'list'
+  const tab: Tab =
+    (['list', 'chart', 'proteins'] as const).find((t) => t === params.get('tab')) ?? 'list'
 
-  // `draft` follows the sliders at once; `view` (debounced) drives requests and the URL
+  // `draft` follows the sliders at once; `view` (debounced) drives requests and the address
   const [draft, setDraft] = useState<View>(() => parseView(params))
   const view = useDebounced(draft, 250)
   const viewKey = serializeView(view).toString()
@@ -76,7 +74,8 @@ function Results({ run }: { run: Run }) {
     tab === 'chart',
   )
   const firstWithCandidates = useMemo(
-    () => proteins.data?.slice().sort((a, b) => b.n_candidates - a.n_candidates)[0]?.accession ?? null,
+    () =>
+      proteins.data?.slice().sort((a, b) => b.n_candidates - a.n_candidates)[0]?.accession ?? null,
     [proteins.data],
   )
   const accession = selected ?? firstWithCandidates
@@ -96,120 +95,135 @@ function Results({ run }: { run: Run }) {
   const last = Math.min(total, (page + 1) * PAGE)
 
   return (
-    <div className="stack">
-      <div className="card">
-        <div className="stats">
-          <Stat label="Proteins" value={count(run.n_proteins)} />
-          <Stat label="Residues" value={count(run.n_residues)} />
-          <Stat label="Windows scored" value={count(run.n_windows)} />
-          <Stat label="Scan time" value={duration(run.seconds)} />
-          <Stat label="Candidates kept" value={count(run.options.top_n ?? null)} />
-        </div>
-        {run.notes.length > 0 && (
-          <ul className="plain muted" style={{ marginTop: 14 }}>
-            {run.notes.map((n) => <li key={n}>{n}</li>)}
-          </ul>
-        )}
-      </div>
+    <div className="workspace">
+      <ResultsControls view={draft} onChange={setDraft} proteins={proteins.data} />
 
-      <div className="workspace">
-        <ResultsControls view={draft} onChange={setDraft} proteins={proteins.data} />
-
-        <div className="stack" style={{ minWidth: 0 }}>
-          <div className="row spread">
-            <div className="tabs" role="tablist" aria-label="Views">
-              {TABS.map(([value, text]) => (
-                <button key={value} role="tab" aria-selected={tab === value} onClick={() => setTab(value)}>
-                  {text}
-                </button>
-              ))}
-            </div>
-            <a className="button" href={api.csvUrl(run.id, view)} download>Export CSV</a>
+      <div className="stack" style={{ minWidth: 0 }}>
+        <div className="row spread">
+          <div className="tabs" role="tablist" aria-label="Views">
+            {TABS.map(([value, text]) => (
+              <button
+                key={value}
+                role="tab"
+                aria-selected={tab === value}
+                onClick={() => setTab(value)}
+              >
+                {text}
+              </button>
+            ))}
           </div>
+          <a className="button" href={api.csvUrl(run.id, view)} download>
+            Export CSV
+          </a>
+        </div>
 
-          {tab === 'list' && (
-            <div className="card flush">
-              {list.error && !list.data && <div style={{ padding: 16 }}><ErrorNotice error={list.error} /></div>}
-              {!list.data && !list.error && <Spinner label="Loading candidates" />}
-              {list.data && (
-                <>
-                  <ResultsTable runId={run.id} rows={list.data.rows} prevalence={view.prevalence}
-                    loading={list.loading} />
-                  <div className="pager">
-                    <span className="muted">
-                      {total === 0 ? 'No candidates' : `Showing ${first}–${last} of ${count(total)}`}
-                    </span>
-                    <div className="row">
-                      <button disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button>
-                      <button disabled={last >= total} onClick={() => setPage(page + 1)}>Next</button>
-                    </div>
+        {tab === 'list' && (
+          <div className="card flush">
+            {list.error && !list.data && (
+              <div style={{ padding: 16 }}>
+                <ErrorNotice error={list.error} />
+              </div>
+            )}
+            {!list.data && !list.error && <Spinner label="Loading candidates" />}
+            {list.data && (
+              <>
+                <ResultsTable
+                  runId={run.id}
+                  rows={list.data.rows}
+                  prevalence={view.prevalence}
+                  loading={list.loading}
+                />
+                <div className="pager">
+                  <span className="muted">
+                    {total === 0 ? 'No candidates' : `Showing ${first}–${last} of ${count(total)}`}
+                  </span>
+                  <div className="row">
+                    <button disabled={page === 0} onClick={() => setPage(page - 1)}>
+                      Previous
+                    </button>
+                    <button disabled={last >= total} onClick={() => setPage(page + 1)}>
+                      Next
+                    </button>
                   </div>
-                </>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {tab === 'chart' && (
+          <div className="card">
+            {all.error && !all.data && <ErrorNotice error={all.error} />}
+            {!all.data && !all.error && <Spinner label="Loading candidates" />}
+            {all.data &&
+              (all.data.rows.length === 0 ? (
+                <p className="empty">No candidate matches these filters.</p>
+              ) : (
+                <ScatterPlot
+                  candidates={all.data.rows}
+                  loading={all.loading}
+                  onSelect={(c) => navigate(candidateLink(run.id, c, view.prevalence))}
+                />
+              ))}
+          </div>
+        )}
+
+        {tab === 'proteins' && (
+          <div className="panes">
+            <div className="card flush">
+              {!proteins.data && <Spinner label="Loading proteins" />}
+              <div className="protein-list" role="group" aria-label="Proteins">
+                {proteins.data
+                  ?.slice()
+                  .sort((a, b) => b.n_candidates - a.n_candidates)
+                  .map((p) => (
+                    <button
+                      key={p.accession}
+                      aria-pressed={p.accession === accession}
+                      onClick={() => setSelected(p.accession)}
+                    >
+                      <span>
+                        <strong>{p.accession}</strong>
+                        <br />
+                        <span className="faint">
+                          {p.name.slice(0, 30) || `${count(p.length)} residues`}
+                        </span>
+                      </span>
+                      <span className="faint">{p.n_candidates}</span>
+                    </button>
+                  ))}
+              </div>
+            </div>
+            <div className="card" style={{ minWidth: 0 }}>
+              {protein.error && <ErrorNotice error={protein.error} />}
+              {protein.data && (
+                <div className="stack">
+                  <div>
+                    <h2>{protein.data.accession}</h2>
+                    <p className="muted" style={{ marginTop: 4 }}>
+                      {protein.data.name}, {count(protein.data.length)} residues,{' '}
+                      {plural(protein.data.candidates.length, 'candidate region')} with the current
+                      filters
+                    </p>
+                  </div>
+                  {protein.data.candidates.length === 0 ? (
+                    <p className="empty">No candidate region in this protein matches the filters.</p>
+                  ) : (
+                    <ProteinMap
+                      protein={protein.data}
+                      runId={run.id}
+                      prevalence={view.prevalence}
+                    />
+                  )}
+                </div>
               )}
             </div>
-          )}
-
-          {tab === 'chart' && (
-            <div className="card">
-              {all.error && !all.data && <ErrorNotice error={all.error} />}
-              {!all.data && !all.error && <Spinner label="Loading candidates" />}
-              {all.data &&
-                (all.data.rows.length === 0 ? (
-                  <p className="empty">No candidate matches these filters.</p>
-                ) : (
-                  <ScatterPlot candidates={all.data.rows} loading={all.loading}
-                    onSelect={(c) => navigate(candidateLink(run.id, c, view.prevalence))} />
-                ))}
-            </div>
-          )}
-
-          {tab === 'proteins' && (
-            <div className="workspace" style={{ gridTemplateColumns: 'minmax(220px, 300px) minmax(0, 1fr)' }}>
-              <div className="card flush">
-                {!proteins.data && <Spinner label="Loading proteins" />}
-                <div className="protein-list" role="group" aria-label="Proteins">
-                  {proteins.data
-                    ?.slice()
-                    .sort((a, b) => b.n_candidates - a.n_candidates)
-                    .map((p) => (
-                      <button key={p.accession} aria-pressed={p.accession === accession}
-                        onClick={() => setSelected(p.accession)}>
-                        <span>
-                          <strong>{p.accession}</strong>
-                          <br />
-                          <span className="faint">{p.name.slice(0, 30) || `${p.length} residues`}</span>
-                        </span>
-                        <span className="faint">{p.n_candidates}</span>
-                      </button>
-                    ))}
-                </div>
-              </div>
-              <div className="card" style={{ minWidth: 0 }}>
-                {protein.error && <ErrorNotice error={protein.error} />}
-                {protein.data && (
-                  <div className="stack">
-                    <div>
-                      <h2>{protein.data.accession}</h2>
-                      <p className="muted">
-                        {protein.data.name} · {protein.data.length} residues ·{' '}
-                        {protein.data.candidates.length} candidate region(s) with the current filters
-                      </p>
-                    </div>
-                    {protein.data.candidates.length === 0 ? (
-                      <p className="empty">No candidate region in this protein matches the filters.</p>
-                    ) : (
-                      <ProteinMap protein={protein.data} runId={run.id} prevalence={view.prevalence} />
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          <Note>
-            Moving a slider re-ranks the saved shortlist; nothing is scanned again. The activity
-            number is calibrated for an assumed rarity of AMPs and should be read as an ordering.
-          </Note>
-        </div>
+          </div>
+        )}
+        <p className="callout">
+          Moving a slider re-ranks the saved shortlist; nothing is scanned again. The activity
+          number is calibrated for an assumed rarity of AMPs and should be read as an ordering.
+        </p>
       </div>
     </div>
   )
@@ -220,19 +234,44 @@ export function RunPage() {
   const { run, error } = useRunStatus(id)
 
   return (
-    <div className="stack">
-      <div className="page-head" style={{ marginBottom: 0 }}>
-        <div>
-          <p><Link to="/">← All runs</Link></p>
-          <h1>{run?.label ?? 'Run'}</h1>
-          {run && (
-            <div className="row" style={{ marginTop: 6 }}>
-              <StatusChip state={run.status} />
-              {run.kind === 'precomputed' && <span className="chip">Precomputed</span>}
-            </div>
+    <div className="stack" style={{ gap: 20 }}>
+      <div>
+        <p style={{ marginBottom: 10 }}>
+          <Link to="/">← All runs</Link>
+        </p>
+        <div className="stack" style={{ gap: 10 }}>
+          <div className="row" style={{ gap: 14 }}>
+            <h1>{run?.label ?? 'Run'}</h1>
+            {run && <StatusChip state={run.status} />}
+            {run?.kind === 'precomputed' && <span className="chip">Precomputed</span>}
+          </div>
+          {run?.status === 'done' && (
+            <p className="statline" aria-label="Run summary">
+              <span>
+                <b>{count(run.n_proteins)}</b> {run.n_proteins === 1 ? 'protein' : 'proteins'}
+              </span>
+              <span>
+                <b>{count(run.n_residues)}</b> residues
+              </span>
+              <span>
+                <b>{count(run.n_windows)}</b> windows scored
+              </span>
+              <span>
+                <b>{duration(run.seconds)}</b> scan time
+              </span>
+              <span>
+                <b>{count(run.options.top_n ?? null)}</b> candidates kept
+              </span>
+            </p>
+          )}
+          {run && run.notes.length > 0 && (
+            <p className="hint" style={{ maxWidth: '72ch' }}>
+              {run.notes.join(' ')}
+            </p>
           )}
         </div>
       </div>
+
       {!run && error && <ErrorNotice error={error} title="Could not load this run" />}
       {!run && !error && <Spinner label="Loading run" />}
       {run && (run.status === 'queued' || run.status === 'running') && <Progress run={run} />}
@@ -241,7 +280,9 @@ export function RunPage() {
           <div>
             <strong>This run failed</strong>
             <p>{run.error ?? 'No reason was recorded.'}</p>
-            <p style={{ marginTop: 8 }}><Link to="/new">Start a new run</Link></p>
+            <p style={{ marginTop: 8 }}>
+              <Link to="/new">Start a new run</Link>
+            </p>
           </div>
         </div>
       )}

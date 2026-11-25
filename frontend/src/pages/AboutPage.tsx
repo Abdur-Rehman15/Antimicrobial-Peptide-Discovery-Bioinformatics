@@ -13,10 +13,10 @@ export function AboutPage() {
   const hemo = info.data?.hemolysis_test
 
   return (
-    <div className="stack" style={{ maxWidth: 860 }}>
+    <div className="stack" style={{ maxWidth: 760 }}>
       <div>
         <h1>How this works</h1>
-        <p className="muted" style={{ marginTop: 4 }}>
+        <p className="lead" style={{ marginTop: 6 }}>
           Antimicrobial peptides (AMPs) kill bacteria and are a hope against drug-resistant
           infections. Some are hidden inside ordinary proteins and only become active when the
           protein is cut. This tool looks for them.
@@ -27,7 +27,7 @@ export function AboutPage() {
         <h2>The pipeline</h2>
         <ol className="plain" style={{ listStyle: 'decimal' }}>
           <li>
-            <strong>Scan.</strong> Every fragment of 8 to 50 amino acids of every protein is
+            <strong>Scan.</strong> Every fragment of 8 to 50 residues of every protein is
             described by 35 numbers (charge, oiliness, how amphipathic it is, composition) and
             scored by a gradient-boosting model trained on about 12,000 lab-tested AMPs.
           </li>
@@ -123,7 +123,7 @@ export function AboutPage() {
                 proteomes are scanned offline.
               </li>
               <li>
-                The top of a scan holds many short (8 to 12 amino acid) candidates; isolated short
+                The top of a scan holds many short (8 to 12 residue) candidates; isolated short
                 hot spots each count as one candidate. Treat them with extra caution.
               </li>
               <li>

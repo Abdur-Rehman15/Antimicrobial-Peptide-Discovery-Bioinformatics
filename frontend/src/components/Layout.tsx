@@ -59,10 +59,16 @@ export function Layout() {
       <header className="topbar">
         <div className="topbar-inner">
           <NavLink to="/" className="brand" aria-label="AMP Triage home">
-            <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden>
-              <rect width="32" height="32" rx="7" fill="var(--accent)" />
-              <path d="M7 22 12 10l5 9 3-6 5 9" fill="none" stroke="#fff" strokeWidth="2.6"
-                strokeLinecap="round" strokeLinejoin="round" />
+            {/* The project's own figure: a helical wheel. Looking down the axis of a helix,
+                each residue sits 100 degrees after the one before it. */}
+            <svg width="30" height="30" viewBox="0 0 28 28" aria-hidden>
+              <circle cx="14" cy="14" r="11" fill="none" stroke="var(--accent-line)" strokeWidth="1.2" />
+              <path d="M14 3.5 24.3 15.8 10.4 23.9 4.9 8.8" fill="none" stroke="var(--accent-line)"
+                strokeWidth="1.3" strokeLinejoin="round" />
+              <circle cx="14" cy="3.5" r="2.9" fill="var(--accent)" />
+              <circle cx="24.3" cy="15.8" r="2.9" fill="var(--accent)" />
+              <circle cx="10.4" cy="23.9" r="2.9" fill="var(--accent)" />
+              <circle cx="4.9" cy="8.8" r="2.9" fill="var(--accent)" />
             </svg>
             <span className="brand-name">AMP Triage</span>
           </NavLink>

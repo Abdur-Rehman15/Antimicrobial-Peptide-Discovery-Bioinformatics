@@ -298,3 +298,41 @@ def test_with_prevalence_matches_running_at_that_prevalence(calibrated_models):
     assert at_1e3.activity.to_numpy() == pytest.approx(
         with_prevalence(at_1e3, calibrated_models, 1e-3).activity.to_numpy()
     )
+
+
+# ---- the per-residue score profile --------------------------------------------------------
+
+
+def test_profile_is_the_best_score_covering_each_residue():
+    protein = make_protein(12, 70)
+    prot = Proteome.from_sequences(["P"], [protein])
+    profile = np.zeros(len(prot.codes), dtype=np.float32)
+    scan_proteome(prot, FakeActivity(), keep_per_length=5, profile=profile)
+
+    brute = np.zeros(len(protein))
+    for length in range(8, 51):
+        for start in range(len(protein) - length + 1):
+            X = compute_descriptors([protein[start : start + length]])[FEATURE_NAMES].to_numpy()
+            score = FakeActivity().predict_proba(X)[0, 1]
+            brute[start : start + length] = np.maximum(brute[start : start + length], score)
+    # pruning to the best 5 per length must not touch the profile: it sees every window
+    assert profile[: len(protein)] == pytest.approx(brute, abs=1e-6)
+
+
+def test_the_pipeline_keeps_a_profile_for_every_protein_it_shows(models):
+    proteins = {"P1": make_protein(13, 120), "P2": make_protein(14, 90)}
+    result = run_pipeline(list(proteins), list(proteins.values()), models, top_n=12)
+    shown = set(result.table.accession)
+    assert set(result.profiles) == shown
+    for accession in shown:
+        assert len(result.profiles[accession]) == len(proteins[accession])
+    # a candidate's own region is at least as high as its score, since it is one of the windows
+    for row in result.table.itertuples():
+        covered = result.profiles[row.accession][row.start - 1 : row.end]
+        assert max(covered) >= row.activity_score - 1e-4  # the stored profile is rounded to 4 dp
+
+
+def test_a_protein_with_no_valid_window_has_a_flat_profile(models):
+    result = run_pipeline(["P"], ["KKKXKKK" * 3], models, top_n=5)
+    assert result.table.empty
+    assert result.profiles == {}

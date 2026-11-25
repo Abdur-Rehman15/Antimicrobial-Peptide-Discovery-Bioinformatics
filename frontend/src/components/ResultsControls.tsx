@@ -102,7 +102,7 @@ export function ResultsControls({ view, onChange, proteins }: Props) {
       </div>
 
       <div className="control-group">
-        <Slider id="w-prevalence" label="Assumed rarity of AMPs"
+        <Slider id="w-prevalence" label="Assumed rarity"
           value={prevalenceToSlider(view.prevalence)} min={-5} max={-1} step={0.25}
           display={rarity(view.prevalence)}
           help="Sets the calibrated activity number. The real rarity is unknown, and it changes the order because it changes how strongly activity counts against safety."

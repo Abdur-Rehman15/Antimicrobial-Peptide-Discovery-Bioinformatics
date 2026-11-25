@@ -32,6 +32,11 @@ log = logging.getLogger("amp_triage.api")
 LETTERS = re.compile(r"^[A-Za-z]+$")
 
 
+def plural(n: int, one: str, many: str | None = None) -> str:
+    """"1 protein", "12 proteins" - never "1 protein(s)"."""
+    return f"{n:,} {one if n == 1 else (many or one + 's')}"
+
+
 class InputError(ValueError):
     """The proteins given are not usable (empty, wrong format, or too big)."""
 
@@ -209,7 +214,7 @@ class JobManager:
             label_update = {}
             if auto_label and parsed.organism:
                 label_update["label"] = (
-                    f"{parsed.organism} ({len(parsed.accessions)} proteins)"
+                    f"{parsed.organism} ({plural(len(parsed.accessions), 'protein')})"
                     if request.source.type == "organism" else store.get(run_id)["label"]
                 )
             store.update(run_id, n_proteins=len(parsed.accessions), n_residues=residues,
@@ -226,7 +231,7 @@ class JobManager:
                 for acc, name, seq in zip(parsed.accessions, parsed.names, parsed.sequences,
                                           strict=True)
             }
-            store.save_result(run_id, result.table, proteins)
+            store.save_result(run_id, result.table, proteins, result.profiles)
             store.update(run_id, status="done", progress=1.0, message="done",
                          finished_at=now(), n_windows=result.n_windows,
                          seconds=round(time.time() - started, 1), persist=True)

@@ -206,9 +206,11 @@ describe('RunPage', () => {
     mockDone()
     open()
     expect(await screen.findByRole('link', { name: 'RRARVVWC' })).toBeInTheDocument()
-    expect(screen.getByText('Windows scored').previousSibling).toHaveTextContent('106,812')
-    expect(screen.getByText('Residues').previousSibling).toHaveTextContent('2,820')
-    expect(screen.getByText('Scan time').previousSibling).toHaveTextContent('12 s')
+    const summary = screen.getByLabelText('Run summary')
+    expect(summary).toHaveTextContent('12 proteins')
+    expect(summary).toHaveTextContent('2,820 residues')
+    expect(summary).toHaveTextContent('106,812 windows scored')
+    expect(summary).toHaveTextContent('12 s scan time')
     expect(screen.getByText(/A random sample of 12 of 4,531 proteins/)).toBeInTheDocument()
     expect(screen.getByText('Showing 1–3 of 3')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Export CSV' }).getAttribute('href')).toContain(`/api/runs/${RUN}/results.csv?`)
@@ -312,9 +314,9 @@ describe('CandidatePage', () => {
     expect(await screen.findByRole('heading', { name: 'Peptide RRARVVWC' })).toBeInTheDocument()
     expect(candidate).toHaveBeenCalledWith(RUN, 'P02788', 360, 367, 0.0001, expect.anything())
     expect(screen.getByText('Rank 1')).toBeInTheDocument()
-    expect(screen.getByText(/Residues 360–367 of P02788 \(Lactotransferrin\), 8 amino acids/)).toBeInTheDocument()
+    expect(screen.getByText(/Residues 360–367 of P02788 \(Lactotransferrin\), 8 residues/)).toBeInTheDocument()
     expect(screen.getByText('0.44')).toBeInTheDocument()
-    expect(screen.getByText(/if 1 in 10,000 windows were AMPs/)).toBeInTheDocument()
+    expect(screen.getByText(/1 in 10,000 windows were real AMPs/)).toBeInTheDocument()
     expect(screen.getByText('Net charge')).toBeInTheDocument()
     expect(screen.getByText('2.85')).toBeInTheDocument()
     expect(screen.getByText('64%')).toBeInTheDocument() // closest similarity
@@ -326,9 +328,11 @@ describe('CandidatePage', () => {
     vi.spyOn(api, 'candidate').mockResolvedValue(detail())
     const { container } = open()
     await screen.findByRole('heading', { name: 'Peptide RRARVVWC' })
-    const mark = container.querySelector('.context mark')!
-    expect(mark.textContent).toBe('RRARVVWC')
-    const context = container.querySelector('.context')!
+    const marked = [...container.querySelectorAll('.seq-context .in-peptide')]
+      .map((e) => e.textContent)
+      .join('')
+    expect(marked).toBe('RRARVVWC')
+    const context = container.querySelector('.seq-context')!
     expect(context.textContent).toContain('LRKSEEEVAA' + 'RRARVVWC' + 'AVGEQELRKC')
   })
 

@@ -134,9 +134,9 @@ export function NewRunPage() {
       <div className="page-head" style={{ marginBottom: 0 }}>
         <div>
           <h1>New run</h1>
-          <p className="muted">
-            Every possible fragment of 8 to 50 amino acids is scored, then the best regions are
-            checked for toxicity and novelty.
+          <p className="lead">
+            Every possible fragment of 8 to 50 residues is scored, then the best regions are checked
+            for toxicity and novelty.
           </p>
         </div>
       </div>

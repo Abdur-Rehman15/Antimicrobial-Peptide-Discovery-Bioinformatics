@@ -11,7 +11,7 @@ Endpoints (all under /api, interactive docs at /docs)
     GET    /api/runs/{id}/results                   ranked candidates, re-ranked on the fly
     GET    /api/runs/{id}/results.csv               the same table as a CSV download
     GET    /api/runs/{id}/candidate                 one candidate: features, alignment, notes
-    GET    /api/runs/{id}/proteins[/{accession}]    proteins of the run and where candidates sit
+    GET    /api/runs/{id}/proteins[/{accession}]    proteins, candidate positions, score profile
 
 Results are re-ranked from the saved shortlist for every request (weights, assumed rarity of
 AMPs, filters), so moving a slider never triggers a rescan.
@@ -24,6 +24,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -337,7 +338,15 @@ def create_app(
             raise HTTPException(404, "No such protein in this run.")
         table = ranked_view(finished_table(run_id), calibration, view)
         mine = table[table.accession == accession]
-        return {"accession": accession, **proteins[accession],
+        # the best score covering each residue, calibrated exactly as the table's numbers are
+        raw = store.load_profiles(run_id).get(accession) or []
+        profile = (
+            np.round(calibration.activity_probability(np.asarray(raw, float), view.prevalence), 5)
+            .tolist()
+            if len(raw)
+            else []
+        )
+        return {"accession": accession, "profile": profile, **proteins[accession],
                 "candidates": records(mine[["rank", "start", "end", "length", "sequence",
                                             "activity", "hemolysis_risk", "hemolysis_band",
                                             "novelty_class", "rank_score"]])}
