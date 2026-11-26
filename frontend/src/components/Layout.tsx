@@ -1,34 +1,7 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { api } from '../api/client'
-
-type Theme = 'light' | 'dark' | 'system'
-
-function readTheme(): Theme {
-  try {
-    const saved = localStorage.getItem('amp-theme')
-    if (saved === 'light' || saved === 'dark') return saved
-  } catch {
-    /* storage can be blocked; fall back to the system setting */
-  }
-  return 'system'
-}
-
-function useTheme() {
-  const [theme, setTheme] = useState<Theme>(readTheme)
-  useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'system') root.removeAttribute('data-theme')
-    else root.setAttribute('data-theme', theme)
-    try {
-      if (theme === 'system') localStorage.removeItem('amp-theme')
-      else localStorage.setItem('amp-theme', theme)
-    } catch {
-      /* ignore */
-    }
-  }, [theme])
-  return [theme, setTheme] as const
-}
+import { Lattice } from './Lattice'
 
 /** Polls /health so a stopped backend is announced instead of leaving pages blank. */
 function useBackendUp(): boolean {
@@ -50,48 +23,67 @@ function useBackendUp(): boolean {
   return up
 }
 
-export function Layout() {
-  const [theme, setTheme] = useTheme()
-  const up = useBackendUp()
-  const next: Theme = theme === 'system' ? 'dark' : theme === 'dark' ? 'light' : 'system'
+/** Four residues of a peptide chain, in the colours the whole interface is built from. */
+function Mark() {
+  const beads: [number, number, string][] = [
+    [5, 18, 'var(--res-basic)'],
+    [11, 9.5, 'var(--res-oily)'],
+    [18, 17, 'var(--res-acidic)'],
+    [24, 8.5, 'var(--res-oily)'],
+  ]
   return (
-    <div className="shell">
-      <header className="topbar">
-        <div className="topbar-inner">
-          <NavLink to="/" className="brand" aria-label="AMP Triage home">
-            {/* The project's own figure: a helical wheel. Looking down the axis of a helix,
-                each residue sits 100 degrees after the one before it. */}
-            <svg width="30" height="30" viewBox="0 0 28 28" aria-hidden>
-              <circle cx="14" cy="14" r="11" fill="none" stroke="var(--accent-line)" strokeWidth="1.2" />
-              <path d="M14 3.5 24.3 15.8 10.4 23.9 4.9 8.8" fill="none" stroke="var(--accent-line)"
-                strokeWidth="1.3" strokeLinejoin="round" />
-              <circle cx="14" cy="3.5" r="2.9" fill="var(--accent)" />
-              <circle cx="24.3" cy="15.8" r="2.9" fill="var(--accent)" />
-              <circle cx="10.4" cy="23.9" r="2.9" fill="var(--accent)" />
-              <circle cx="4.9" cy="8.8" r="2.9" fill="var(--accent)" />
-            </svg>
-            <span className="brand-name">AMP Triage</span>
-          </NavLink>
-          <nav className="nav" aria-label="Main">
-            <NavLink to="/" end>Runs</NavLink>
-            <NavLink to="/new">New run</NavLink>
-            <NavLink to="/about">About</NavLink>
-          </nav>
-          <button className="quiet" onClick={() => setTheme(next)}
-            title={`Theme: ${theme}. Click for ${next}.`}>
-            {theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'Auto'}
-          </button>
-        </div>
-      </header>
-      {!up && (
-        <div className="banner" role="alert">
-          Cannot reach the backend. Start it with{' '}
-          <code>uvicorn amp_triage.api.main:app --port 8000</code>
-        </div>
-      )}
-      <main className="main">
-        <Outlet />
-      </main>
-    </div>
+    <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
+      <path
+        d="M5 18 11 9.5 18 17 24 8.5"
+        fill="none"
+        stroke="var(--res-other)"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.8"
+      />
+      {beads.map(([cx, cy, fill]) => (
+        <circle key={cx} cx={cx} cy={cy} r="3.4" fill={fill} stroke="var(--bg-base)" strokeWidth="1.4" />
+      ))}
+    </svg>
+  )
+}
+
+export function Layout() {
+  const up = useBackendUp()
+  const location = useLocation()
+
+  return (
+    <>
+      <Lattice />
+      <div className="shell">
+        <header className="topbar">
+          <div className="topbar-inner">
+            <NavLink to="/" className="brand" aria-label="AMP Triage home">
+              <Mark />
+              <span className="brand-name">AMP Triage</span>
+            </NavLink>
+            <nav className="nav" aria-label="Main">
+              <NavLink to="/" end>
+                Runs
+              </NavLink>
+              <NavLink to="/new">New run</NavLink>
+              <NavLink to="/about">About</NavLink>
+            </nav>
+          </div>
+        </header>
+        {!up && (
+          <div className="banner" role="alert">
+            Cannot reach the backend. Start it with{' '}
+            <code>uvicorn amp_triage.api.main:app --port 8000</code>
+          </div>
+        )}
+        <main className="main">
+          <div className="route" key={location.pathname}>
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </>
   )
 }

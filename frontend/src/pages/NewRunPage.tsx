@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Organism, RunSource } from '../api/types'
 import { ErrorNotice, Note, Spinner } from '../components/Bits'
+import { PipelineStages } from '../components/PipelineStages'
 import { useAsync } from '../hooks/useAsync'
 import { useDebounced } from '../hooks/useDebounced'
 import { count, duration, estimatedSeconds, rarity } from '../lib/format'
@@ -39,17 +40,25 @@ function OrganismPicker({
 }) {
   const [query, setQuery] = useState('')
   const debounced = useDebounced(query.trim(), 400)
-  const search = useAsync((signal) => api.organisms(debounced, signal), [debounced], debounced.length >= 2)
+  const search = useAsync(
+    (signal) => api.organisms(debounced, signal),
+    [debounced],
+    debounced.length >= 2,
+  )
 
   return (
     <div className="stack">
       <label className="field">
         Search an organism
-        <input type="search" value={query} placeholder="e.g. escherichia coli, mouse, arabidopsis"
-          onChange={(e) => setQuery(e.target.value)} />
+        <input
+          type="search"
+          value={query}
+          placeholder="e.g. escherichia coli, mouse, arabidopsis"
+          onChange={(e) => setQuery(e.target.value)}
+        />
         <span className="hint">
-          Only reviewed (Swiss-Prot) proteins are used. A full proteome with unreviewed entries can
-          hold hundreds of thousands of proteins.
+          Only reviewed (Swiss-Prot) proteins are used. A full proteome with unreviewed entries
+          can hold hundreds of thousands of proteins.
         </span>
       </label>
       {search.loading && <Spinner label="Searching UniProt" />}
@@ -58,15 +67,23 @@ function OrganismPicker({
         <p className="muted">No organism with reviewed proteins matches “{debounced}”.</p>
       )}
       {search.data && search.data.length > 0 && (
-        <div className="card flush" role="radiogroup" aria-label="Organisms found">
+        <div className="organism-cards" role="radiogroup" aria-label="Organisms found">
           {search.data.map((o) => (
-            <label key={o.taxon_id} className="check"
-              style={{ padding: '10px 14px', borderBottom: '1px solid var(--grid)' }}>
-              <input type="radio" name="organism" checked={chosen?.taxon_id === o.taxon_id}
-                onChange={() => onChoose(o)} />
-              <span style={{ flex: 1 }}>{o.name}</span>
-              <span className="faint">
-                {count(o.reviewed_proteins)} proteins · taxon {o.taxon_id}
+            <label
+              key={o.taxon_id}
+              className={`organism-card${chosen?.taxon_id === o.taxon_id ? ' chosen' : ''}`}
+            >
+              <input
+                type="radio"
+                name="organism"
+                checked={chosen?.taxon_id === o.taxon_id}
+                onChange={() => onChoose(o)}
+              />
+              <span className="stack" style={{ gap: 2 }}>
+                <span>{o.name}</span>
+                <span className="hint">
+                  {count(o.reviewed_proteins)} proteins · taxon {o.taxon_id}
+                </span>
               </span>
             </label>
           ))}
@@ -95,13 +112,15 @@ export function NewRunPage() {
   let source: RunSource | null = null
   let problem: string | null = null
   if (mode === 'accessions') {
-    if (accessions.invalid.length > 0) problem = `Not a UniProt accession: ${accessions.invalid.slice(0, 3).join(', ')}`
+    if (accessions.invalid.length > 0)
+      problem = `Not a UniProt accession: ${accessions.invalid.slice(0, 3).join(', ')}`
     else if (accessions.valid.length === 0) problem = 'Enter at least one accession.'
     else if (accessions.valid.length > 200) problem = 'At most 200 accessions per run.'
     else source = { type: 'accessions', accessions: accessions.valid }
   } else if (mode === 'fasta') {
     if (fasta.trim() === '') problem = 'Paste at least one protein in FASTA format.'
-    else if (fastaProteins === 0) problem = 'FASTA starts each protein with a line beginning with “>”.'
+    else if (fastaProteins === 0)
+      problem = 'FASTA starts each protein with a line beginning with “>”.'
     else source = { type: 'fasta', text: fasta }
   } else if (organism) {
     source = { type: 'organism', taxon_id: organism.taxon_id, max_proteins: sample }
@@ -130,113 +149,201 @@ export function NewRunPage() {
   const sampleSeconds = estimatedSeconds(Math.min(sample, organism?.reviewed_proteins ?? sample))
 
   return (
-    <form onSubmit={submit} className="stack" style={{ maxWidth: 820 }}>
+    <form onSubmit={submit} className="stack">
       <div className="page-head" style={{ marginBottom: 0 }}>
         <div>
           <h1>New run</h1>
           <p className="lead">
-            Every possible fragment of 8 to 50 residues is scored, then the best regions are checked
-            for toxicity and novelty.
+            Every possible fragment of 8 to 50 residues is scored, then the best regions are
+            checked for toxicity and novelty.
           </p>
         </div>
       </div>
 
-      <div className="card">
-        <div className="tabs" role="tablist" aria-label="Where the proteins come from">
-          {(
-            [
-              ['accessions', 'UniProt accessions'],
-              ['fasta', 'Paste FASTA'],
-              ['organism', 'Organism'],
-            ] as const
-          ).map(([value, text]) => (
-            <button key={value} type="button" role="tab" aria-selected={mode === value}
-              onClick={() => setMode(value)}>
-              {text}
-            </button>
-          ))}
-        </div>
-        <div style={{ paddingTop: 16 }} className="stack">
-          {mode === 'accessions' && (
-            <label className="field">
-              Accessions
-              <textarea value={accessionText} style={{ minHeight: 96 }}
-                placeholder={EXAMPLE} onChange={(e) => setAccessionText(e.target.value)} />
-              <span className="hint">
-                Separate with commas, spaces or new lines.{' '}
-                <button type="button" className="quiet" style={{ padding: 0 }}
-                  onClick={() => setAccessionText(EXAMPLE)}>
-                  Use an example
+      <div className="new-run-grid">
+        <div className="stack">
+          <div className="card stack">
+            <div className="segmented" role="tablist" aria-label="Where the proteins come from">
+              {(
+                [
+                  ['accessions', 'UniProt accessions'],
+                  ['fasta', 'Paste FASTA'],
+                  ['organism', 'Organism'],
+                ] as const
+              ).map(([value, text]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === value}
+                  onClick={() => setMode(value)}
+                >
+                  {text}
                 </button>
-              </span>
-            </label>
-          )}
-          {mode === 'fasta' && (
-            <label className="field">
-              Proteins in FASTA format
-              <textarea value={fasta} placeholder={'>sp|P12345|MY_PROTEIN My protein\nMKT...'}
-                onChange={(e) => setFasta(e.target.value)} />
-              <span className="hint">
-                {fastaProteins > 0 ? `${fastaProteins} protein(s) found. ` : ''}
-                One live run takes up to {count(LIMIT_RESIDUES)} residues (about 4 minutes).
-              </span>
-            </label>
-          )}
-          {mode === 'organism' && (
-            <>
-              <OrganismPicker chosen={organism} onChoose={setOrganism} />
-              {organism && (
+              ))}
+            </div>
+
+            {mode === 'accessions' && (
+              <>
                 <label className="field">
-                  How many proteins to scan (random sample of {count(organism.reviewed_proteins)})
-                  <input type="number" min={1} max={500} value={sample}
-                    onChange={(e) => setSample(Math.min(500, Math.max(1, Number(e.target.value) || 1)))} />
+                  Accessions
+                  <textarea
+                    value={accessionText}
+                    style={{ minHeight: 92 }}
+                    placeholder={EXAMPLE}
+                    onChange={(e) => setAccessionText(e.target.value)}
+                  />
                   <span className="hint">
-                    About {duration(sampleSeconds)}. A whole proteome is an offline job
-                    (scripts/precompute_run.py).
+                    Separate with commas, spaces or new lines.{' '}
+                    <button
+                      type="button"
+                      className="quiet"
+                      style={{ padding: 0 }}
+                      onClick={() => setAccessionText(EXAMPLE)}
+                    >
+                      Use an example
+                    </button>
                   </span>
                 </label>
-              )}
-            </>
-          )}
-          {problem && <p className="hint" role="status">{problem}</p>}
-        </div>
-      </div>
+                {(accessions.valid.length > 0 || accessions.invalid.length > 0) && (
+                  <div className="chip-field" aria-label="Entered so far">
+                    {accessions.valid.map((a) => (
+                      <span className="chip removable" key={a}>
+                        {a}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${a}`}
+                          onClick={() =>
+                            setAccessionText(accessions.valid.filter((x) => x !== a).join(', '))
+                          }
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    {accessions.invalid.map((a) => (
+                      <span
+                        className="chip removable invalid"
+                        key={a}
+                        title="Not a UniProt accession"
+                      >
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
 
-      <div className="card stack">
-        <h2>Options</h2>
-        <div className="two-col">
-          <label className="field">
-            Name (optional)
-            <input type="text" value={label} maxLength={120} placeholder="e.g. Human blood proteins"
-              onChange={(e) => setLabel(e.target.value)} />
-          </label>
-          <label className="field">
-            Candidates to keep
-            <input type="number" min={1} max={1000} value={topN}
-              onChange={(e) => setTopN(Math.min(1000, Math.max(1, Number(e.target.value) || 1)))} />
-            <span className="hint">The best regions after overlapping windows are merged.</span>
-          </label>
-          <label className="field">
-            Assumed rarity of AMPs
-            <select value={prevalence} onChange={(e) => setPrevalence(Number(e.target.value))}>
-              {RARITIES.map((r) => (
-                <option key={r} value={r}>{rarity(r)} windows</option>
-              ))}
-            </select>
-            <span className="hint">Sets the calibrated activity number. It can be changed later.</span>
-          </label>
-        </div>
-      </div>
+            {mode === 'fasta' && (
+              <label className="field">
+                Proteins in FASTA format
+                <textarea
+                  value={fasta}
+                  placeholder={'>sp|P12345|MY_PROTEIN My protein\nMKT...'}
+                  onChange={(e) => setFasta(e.target.value)}
+                />
+                <span className="hint">
+                  {fastaProteins > 0 ? `${fastaProteins} protein(s) found. ` : ''}
+                  One live run takes up to {count(LIMIT_RESIDUES)} residues (about 4 minutes).
+                </span>
+              </label>
+            )}
 
-      <Note>
-        Scores are model estimates. “Novel” means unlike every known AMP, not “probably an AMP”.
-        Hemolysis is only roughly predicted. Treat the list as a place to look, not a verdict.
-      </Note>
-      {error && <ErrorNotice error={error} title="The run could not be started" />}
-      <div className="row">
-        <button type="submit" className="primary" disabled={!source || busy}>
-          {busy ? 'Starting…' : 'Start run'}
-        </button>
+            {mode === 'organism' && (
+              <>
+                <OrganismPicker chosen={organism} onChoose={setOrganism} />
+                {organism && (
+                  <label className="field">
+                    How many proteins to scan (random sample of{' '}
+                    {count(organism.reviewed_proteins)})
+                    <input
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={sample}
+                      onChange={(e) =>
+                        setSample(Math.min(500, Math.max(1, Number(e.target.value) || 1)))
+                      }
+                    />
+                    <span className="hint">
+                      About {duration(sampleSeconds)}. A whole proteome is an offline job
+                      (scripts/precompute_run.py).
+                    </span>
+                  </label>
+                )}
+              </>
+            )}
+
+            {problem && (
+              <p className="hint" role="status">
+                {problem}
+              </p>
+            )}
+          </div>
+
+          <div className="card stack">
+            <h2>Options</h2>
+            <div className="two-col">
+              <label className="field">
+                Name (optional)
+                <input
+                  type="text"
+                  value={label}
+                  maxLength={120}
+                  placeholder="e.g. Human blood proteins"
+                  onChange={(e) => setLabel(e.target.value)}
+                />
+              </label>
+              <label className="field">
+                Candidates to keep
+                <input
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={topN}
+                  onChange={(e) =>
+                    setTopN(Math.min(1000, Math.max(1, Number(e.target.value) || 1)))
+                  }
+                />
+                <span className="hint">
+                  The best regions after overlapping windows are merged.
+                </span>
+              </label>
+              <label className="field">
+                Assumed rarity of AMPs
+                <select value={prevalence} onChange={(e) => setPrevalence(Number(e.target.value))}>
+                  {RARITIES.map((r) => (
+                    <option key={r} value={r}>
+                      {rarity(r)} windows
+                    </option>
+                  ))}
+                </select>
+                <span className="hint">
+                  Sets the calibrated activity number. It can be changed later.
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {error && <ErrorNotice error={error} title="The run could not be started" />}
+
+          <button type="submit" className="primary start-button" disabled={!source || busy}>
+            {busy ? 'Starting…' : 'Start run'}
+          </button>
+        </div>
+
+        <aside className="stack">
+          <div className="card stack">
+            <h2>What a run does</h2>
+            <PipelineStages idle />
+          </div>
+          <Note>
+            Scores are model estimates. “Novel” means unlike every known AMP, not “probably an
+            AMP”. Hemolysis is only roughly predicted. Treat the list as a place to look, not a
+            verdict.
+          </Note>
+        </aside>
       </div>
     </form>
   )

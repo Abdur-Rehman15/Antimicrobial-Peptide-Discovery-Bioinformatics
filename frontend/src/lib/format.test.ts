@@ -1,4 +1,4 @@
-import { abbreviate, count, duration, estimatedSeconds, percent, probability, rarity } from './format'
+import { count, duration, estimatedSeconds, percent, probability, rarity } from './format'
 
 describe('format', () => {
   it('formats counts and percentages', () => {
@@ -37,13 +37,4 @@ describe('format', () => {
     expect(estimatedSeconds(10, 20)).toBe(0) // shorter than a window: nothing to scan
   })
 
-  it('shortens long peptides but never short ones', () => {
-    expect(abbreviate('KRWWK')).toBe('KRWWK')
-    const long = 'A'.repeat(20) + 'L'.repeat(22)
-    const short = abbreviate(long, 26)
-    expect(short.length).toBeLessThanOrEqual(26)
-    expect(short).toContain('…')
-    expect(short.startsWith('AAAA')).toBe(true)
-    expect(short.endsWith('LLLL')).toBe(true)
-  })
 })

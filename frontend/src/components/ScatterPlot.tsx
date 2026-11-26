@@ -79,6 +79,7 @@ export function ScatterPlot({ candidates, onSelect, loading = false }: Props) {
     return best ? { c: best.c, x: best.px / scale, y: best.py / scale } : null
   }
 
+  const plotMax = Math.max(...candidates.map((c) => c.activity), 1e-9)
   const top3 = new Set(candidates.slice(0, 3).map((c) => c.rank))
   const bandX = [1 / 3, 2 / 3].map(plot.x)
   const bottom = MARGIN.top + plot.innerH
@@ -117,17 +118,29 @@ export function ScatterPlot({ candidates, onSelect, loading = false }: Props) {
               {t.toFixed(2)}
             </text>
           ))}
-          {bandX.map((bx) => (
-            <line key={bx} className="grid" x1={bx} x2={bx} y1={MARGIN.top} y2={bottom}
-              strokeDasharray="0" />
+          {/* hemolysis bands as quiet washes rather than lines */}
+          {[
+            ['low', MARGIN.left, bandX[0], 'var(--risk-low)'],
+            ['medium', bandX[0], bandX[1], 'var(--risk-med)'],
+            ['high', bandX[1], width - MARGIN.right, 'var(--risk-high)'],
+          ].map(([label, from, to, colour]) => (
+            <rect key={label as string} x={from as number} y={MARGIN.top}
+              width={Math.max(0, (to as number) - (from as number))} height={plot.innerH}
+              fill={colour as string} opacity={0.045} />
           ))}
+          {/* the corner the ranking favours: strong activity, little risk */}
+          <rect x={MARGIN.left} y={MARGIN.top} width={Math.max(0, bandX[0] - MARGIN.left)}
+            height={plot.innerH / 2} fill="var(--accent)" opacity={0.06} />
+          <text className="muted-text" x={MARGIN.left + 8} y={MARGIN.top + 14}>
+            best candidates
+          </text>
           {[
             ['low', (MARGIN.left + bandX[0]) / 2],
             ['medium', (bandX[0] + bandX[1]) / 2],
             ['high', (bandX[1] + width - MARGIN.right) / 2],
           ].map(([label, cx]) => (
             <text key={label as string} className="muted-text" x={cx as number}
-              y={MARGIN.top + 12} textAnchor="middle">
+              y={bottom - 6} textAnchor="middle">
               {label as string} risk
             </text>
           ))}
@@ -138,12 +151,20 @@ export function ScatterPlot({ candidates, onSelect, loading = false }: Props) {
             textAnchor="middle">
             Activity (calibrated, log scale)
           </text>
-          {points.map(({ c, px, py }) => {
+          {points.map(({ c, px, py }, i) => {
             const active = hover?.c === c
+            const size = DOT - 1 + 4 * Math.min(1, c.activity / Math.max(plotMax, 1e-9))
+            const colour = NOVELTY_COLOR[c.novelty_class]
             return (
-              <circle key={`${c.accession}:${c.start}-${c.end}`} cx={px} cy={py}
-                r={active ? DOT + 2 : DOT} fill={NOVELTY_COLOR[c.novelty_class]}
-                stroke="var(--surface)" strokeWidth={2} data-testid="point" />
+              <g
+                key={`${c.accession}:${c.start}-${c.end}`}
+                className="dot-in"
+                style={{ animationDelay: `${Math.min(i, 70) * 9}ms` }}
+              >
+                <circle cx={px} cy={py} r={size * 2.4} fill={colour} opacity={active ? 0.3 : 0.16} />
+                <circle cx={px} cy={py} r={active ? size + 2 : size} fill={colour}
+                  stroke="var(--bg-surface)" strokeWidth={1.5} data-testid="point" />
+              </g>
             )
           })}
           {points

@@ -1,6 +1,6 @@
 import { RESIDUE_CLASS_NAME, textClass } from '../lib/residues'
 
-/** Each residue as its own span: hue carries charge, weight of ink carries oiliness. */
+/** Each residue as its own span: hue carries charge, and the oily ones are the bright amber. */
 function residues(sequence: string) {
   return [...sequence].map((aa, i) => (
     // eslint-disable-next-line react/no-array-index-key -- position is the identity here
@@ -19,11 +19,34 @@ export function Sequence({ sequence, title }: { sequence: string; title?: string
   )
 }
 
-/** The peptide as the headline of its own page. */
-export function SequenceHero({ sequence }: { sequence: string }) {
+/**
+ * The peptide as the headline of its own page. Residues arrive one after another, left to
+ * right, so the sequence reads as something being spelled out. Hovering one marks the matching
+ * residue on the helical wheel, and the wheel marks back.
+ */
+export function SequenceHero({
+  sequence,
+  highlight = null,
+  onHover,
+}: {
+  sequence: string
+  highlight?: number | null
+  onHover?: (index: number | null) => void
+}) {
   return (
     <h1 className="seq-hero" aria-label={`Peptide ${sequence}`}>
-      {residues(sequence)}
+      {[...sequence].map((aa, i) => (
+        <span
+          // eslint-disable-next-line react/no-array-index-key -- position is the identity here
+          key={i}
+          className={`${RESIDUE_CLASS_NAME[textClass(aa)]} res-in${highlight === i ? ' res-hi' : ''}`}
+          style={{ animationDelay: `${i * 25}ms` }}
+          onPointerEnter={() => onHover?.(i)}
+          onPointerLeave={() => onHover?.(null)}
+        >
+          {aa}
+        </span>
+      ))}
     </h1>
   )
 }

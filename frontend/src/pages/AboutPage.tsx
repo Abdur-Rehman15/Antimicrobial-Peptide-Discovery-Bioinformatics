@@ -1,10 +1,23 @@
 import { api } from '../api/client'
 import { ErrorNotice, Note, Spinner } from '../components/Bits'
+import { PipelineStages } from '../components/PipelineStages'
+import { NOVELTY_COLOR } from '../components/Chips'
+import type { NoveltyClass } from '../api/types'
 import { useAsync } from '../hooks/useAsync'
 import { count } from '../lib/format'
 
 function pct(x: number | undefined, digits = 0): string {
   return x === undefined ? '-' : `${(x * 100).toFixed(digits)}%`
+}
+
+/** A measure as a number with a bar, so a column can be read down at a glance. */
+function Metric({ value, text }: { value: number | undefined; text: string }) {
+  return (
+    <span className="metric-cell">
+      <span className="bar" aria-hidden style={{ '--w': `${(value ?? 0) * 100}%` } as React.CSSProperties} />
+      {text}
+    </span>
+  )
 }
 
 export function AboutPage() {
@@ -13,7 +26,7 @@ export function AboutPage() {
   const hemo = info.data?.hemolysis_test
 
   return (
-    <div className="stack" style={{ maxWidth: 760 }}>
+    <div className="stack" style={{ maxWidth: 900 }}>
       <div>
         <h1>How this works</h1>
         <p className="lead" style={{ marginTop: 6 }}>
@@ -25,30 +38,14 @@ export function AboutPage() {
 
       <div className="card stack">
         <h2>The pipeline</h2>
-        <ol className="plain" style={{ listStyle: 'decimal' }}>
-          <li>
-            <strong>Scan.</strong> Every fragment of 8 to 50 residues of every protein is
-            described by 35 numbers (charge, oiliness, how amphipathic it is, composition) and
-            scored by a gradient-boosting model trained on about 12,000 lab-tested AMPs.
-          </li>
-          <li>
-            <strong>Merge.</strong> Overlapping fragments are one finding, so the best fragment of
-            each region is kept.
-          </li>
-          <li>
-            <strong>Check.</strong> A second model predicts hemolysis (damage to red blood cells).
-            Our own Smith-Waterman alignment compares the fragment with 17,492 known AMPs to judge
-            novelty.
-          </li>
-          <li>
-            <strong>Rank.</strong> The three are combined; you control the weights.
-          </li>
-        </ol>
-        {info.data && (
-          <p className="mono" style={{ background: 'var(--wash)', padding: '8px 12px', borderRadius: 8 }}>
-            {info.data.rank_formula}
-          </p>
-        )}
+        <PipelineStages horizontal idle />
+        <p className="formula">
+          activity<sup>a</sup>
+          <span className="op">×</span>
+          (1 − hemolysis risk)<sup>s</sup>
+          <span className="op">×</span>
+          novelty<sup>n</sup>
+        </p>
       </div>
 
       {info.error && !info.data && <ErrorNotice error={info.error} title="Could not load the model details" />}
@@ -78,10 +75,24 @@ export function AboutPage() {
                     {(['all', 'natural', 'synthetic'] as const).map((k) => (
                       <tr key={k}>
                         <td style={{ textTransform: 'capitalize' }}>{k}</td>
-                        <td className="num">{test[k].roc_auc.toFixed(3)}</td>
-                        <td className="num">{test[k].pr_auc.toFixed(3)}</td>
-                        <td className="num">{pct(test[k]['recall@fpr=0.001'])}</td>
-                        <td className="num">{pct(test[k]['recall@fpr=0.0001'])}</td>
+                        <td className="num">
+                          <Metric value={test[k].roc_auc} text={test[k].roc_auc.toFixed(3)} />
+                        </td>
+                        <td className="num">
+                          <Metric value={test[k].pr_auc} text={test[k].pr_auc.toFixed(3)} />
+                        </td>
+                        <td className="num">
+                          <Metric
+                            value={test[k]['recall@fpr=0.001']}
+                            text={pct(test[k]['recall@fpr=0.001'])}
+                          />
+                        </td>
+                        <td className="num">
+                          <Metric
+                            value={test[k]['recall@fpr=0.0001']}
+                            text={pct(test[k]['recall@fpr=0.0001'])}
+                          />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -102,15 +113,23 @@ export function AboutPage() {
 
           <div className="card stack">
             <h2>What the labels mean</h2>
-            <ul className="plain">
-              {Object.entries(info.data.novelty_labels).map(([k, v]) => (
-                <li key={k}><strong style={{ textTransform: 'capitalize' }}>{k}:</strong> {v}.</li>
-              ))}
-              <li>
-                “Novel” does <em>not</em> mean “probably an AMP”. Half of all real AMPs are novel
-                in this sense, because the known AMPs are a very incomplete list.
-              </li>
-            </ul>
+            <div className="label-cards">
+              {(Object.entries(info.data.novelty_labels) as [NoveltyClass, string][]).map(
+                ([k, v]) => (
+                  <div className="label-card" key={k}>
+                    <span className="head">
+                      <span className="dot" style={{ background: NOVELTY_COLOR[k] }} aria-hidden />
+                      {k}
+                    </span>
+                    <span className="hint">{v}.</span>
+                  </div>
+                ),
+              )}
+            </div>
+            <p className="muted">
+              “Novel” does <em>not</em> mean “probably an AMP”. Half of all real AMPs are novel in
+              this sense, because the known AMPs are a very incomplete list.
+            </p>
           </div>
 
           <div className="card stack">

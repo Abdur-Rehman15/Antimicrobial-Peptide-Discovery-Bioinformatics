@@ -1,18 +1,28 @@
+import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { ErrorNotice, Meter, Spinner } from '../components/Bits'
-import { BandChip, NOVELTY_HELP, NoveltyChip } from '../components/Chips'
+import { AlignmentView } from '../components/AlignmentView'
+import { BandChip, NoveltyChip } from '../components/Chips'
 import { CompositionChart } from '../components/CompositionChart'
 import { HelicalWheel } from '../components/HelicalWheel'
+import { PropertyBar } from '../components/PropertyBar'
 import { SequenceContext, SequenceHero, SequenceKey } from '../components/Sequence'
 import { useAsync } from '../hooks/useAsync'
 import { FEATURE_LABELS, percent, plural, probability, rarity } from '../lib/format'
 import { DEFAULT_PREVALENCE } from '../lib/view'
 
+const BAND_METER: Record<string, string> = {
+  low: 'var(--risk-low)',
+  medium: 'var(--risk-med)',
+  high: 'var(--risk-high)',
+}
+
 export function CandidatePage() {
   const { id = '' } = useParams()
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const [marked, setMarked] = useState<number | null>(null)
   const accession = params.get('accession') ?? ''
   const start = Number(params.get('start'))
   const end = Number(params.get('end'))
@@ -42,7 +52,7 @@ export function CandidatePage() {
   const after = protein.context.slice(lead + c.length)
 
   return (
-    <div className="stack" style={{ gap: 18 }}>
+    <div className="stack" style={{ gap: 'var(--s-6)' }}>
       <div className="row spread">
         <button className="quiet" onClick={back}>
           ← Back to results
@@ -54,13 +64,13 @@ export function CandidatePage() {
 
       {/* What this peptide is, and the three numbers that decide its place in the list. */}
       <div className="sheet">
-        <section className="stack" style={{ gap: 14 }}>
+        <section className="stack" style={{ gap: 'var(--s-4)' }}>
           <div className="row">
             <span className="chip">Rank {c.rank}</span>
             <NoveltyChip value={c.novelty_class} />
             <BandChip band={c.hemolysis_band} risk={c.hemolysis_risk} />
           </div>
-          <SequenceHero sequence={c.sequence} />
+          <SequenceHero sequence={c.sequence} highlight={marked} onHover={setMarked} />
           <p className="muted">
             Residues {c.start}–{c.end} of {protein.accession}
             {protein.name ? ` (${protein.name})` : ''}, {plural(c.length, 'residue')}
@@ -72,7 +82,7 @@ export function CandidatePage() {
           <div>
             <h3>Antimicrobial activity</h3>
             <span className="big-number">{probability(c.activity)}</span>
-            <Meter value={c.activity} label="Calibrated activity" />
+            <Meter value={c.activity} label="Calibrated activity" big />
             <p className="hint">
               If {rarity(prevalence)} windows were real AMPs. Raw model score{' '}
               {c.activity_score.toFixed(3)}. Read it as an ordering, not as a chance.
@@ -80,23 +90,38 @@ export function CandidatePage() {
           </div>
           <div>
             <h3>Hemolysis risk</h3>
-            <div>
-              <BandChip band={c.hemolysis_band} />
+            <span className="big-number" style={{ color: BAND_METER[c.hemolysis_band] }}>
+              {c.hemolysis_risk.toFixed(2)}
+            </span>
+            <div
+              className="meter big"
+              role="progressbar"
+              aria-label="Hemolysis risk"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(c.hemolysis_risk * 100)}
+            >
+              <span
+                style={{
+                  width: `${c.hemolysis_risk * 100}%`,
+                  background: BAND_METER[c.hemolysis_band],
+                  boxShadow: 'none',
+                }}
+              />
             </div>
             <p className="hint">
-              Model score {c.hemolysis_risk.toFixed(2)}, where 1 means likely to burst red blood
-              cells. This model is only roughly calibrated, so use the band.
+              1 means likely to burst red blood cells. This model is only roughly calibrated, so
+              use the band: <strong>{c.hemolysis_band}</strong>.
             </p>
           </div>
           <div>
-            <h3>Novelty</h3>
-            <div>
-              <NoveltyChip value={c.novelty_class} />
-            </div>
+            <h3>Closest known AMP</h3>
+            <span className="big-number">{percent(c.max_similarity)}</span>
+            <Meter value={c.max_similarity} label="Similarity to the closest known AMP" big />
             <p className="hint">
-              {NOVELTY_HELP[c.novelty_class]}. Closest known AMP is{' '}
-              <strong>{percent(c.max_similarity)}</strong> similar
-              {c.closest_id ? ` (${c.closest_id})` : ''}.
+              similar to {c.closest_id || 'its nearest match'}. Comparing a peptide with 17,492
+              known AMPs and keeping the best match reaches this much by chance alone, which is
+              why it still counts as <NoveltyChip value={c.novelty_class} />.
             </p>
           </div>
         </div>
@@ -113,75 +138,65 @@ export function CandidatePage() {
         </section>
       </div>
 
-      {/* What it is made of, and the shape that follows from the order of its residues. */}
+      {/* The shape that follows from the order of its residues. */}
       <div className="sheet">
-        <div className="split">
-          <div>
-            <h2>Properties</h2>
-            <dl className="facts" style={{ marginTop: 12 }}>
-              {Object.entries(FEATURE_LABELS).map(([key, meta]) =>
-                features[key] === undefined ? null : (
-                  <div key={key} style={{ display: 'contents' }}>
-                    <dt>
-                      {meta.label}
-                      <span className="hint">{meta.hint}</span>
-                    </dt>
-                    <dd>
-                      {Number.isInteger(features[key]) ? features[key] : features[key].toFixed(2)}
-                    </dd>
-                  </div>
-                ),
-              )}
-            </dl>
-          </div>
-          <div>
-            <h2>Helical wheel</h2>
-            <div style={{ marginTop: 12 }}>
-              <HelicalWheel sequence={c.sequence} />
-            </div>
-            <p className="hint" style={{ marginTop: 12 }}>
-              If this peptide folds into a helix, the oily and the charged residues end up on
-              opposite sides, which is the classic antimicrobial shape. Whether it really folds
-              that way is not known here.
-            </p>
-          </div>
-        </div>
+        <section>
+          <h2>Helical wheel</h2>
+          <HelicalWheel sequence={c.sequence} highlight={marked} onHover={setMarked} />
+        </section>
+        <section>
+          <h2>Properties</h2>
+          <p className="hint" style={{ marginBottom: 'var(--s-4)' }}>
+            The lit stretch on each bar is where the middle 80% of 10,056 known antimicrobial
+            peptides sit, and the notch is their median. Being outside it is information, not a
+            fault.
+          </p>
+          <dl className="facts">
+            {Object.entries(FEATURE_LABELS).map(([key, meta]) =>
+              features[key] === undefined ? null : (
+                <div key={key} style={{ display: 'contents' }}>
+                  <dt>
+                    {meta.label}
+                    <span className="hint">{meta.hint}</span>
+                  </dt>
+                  <dd className="fact-bar">
+                    <PropertyBar name={key} value={features[key]} />
+                  </dd>
+                  <dd>
+                    {Number.isInteger(features[key]) ? features[key] : features[key].toFixed(2)}
+                  </dd>
+                </div>
+              ),
+            )}
+          </dl>
+        </section>
+      </div>
+
+      {/* What it is made of, and whether anyone has seen it before. */}
+      <div className="sheet">
         <section>
           <h2>Amino acid composition</h2>
           <CompositionChart composition={composition} />
         </section>
-      </div>
-
-      {/* Is it already known, and what should be kept in mind. */}
-      <div className="sheet">
         <section>
           <h2>Closest known AMP</h2>
           {alignment ? (
-            <>
-              <p className="muted" style={{ marginBottom: 12 }}>
-                Smith-Waterman local alignment against{' '}
-                <strong>{alignment.known_id || 'a database entry'}</strong> (
-                <span className="mono">{alignment.known_sequence}</span>): score {alignment.score},{' '}
-                {percent(alignment.identity)} identical, {percent(alignment.similarity)} similar
-                {alignment.gaps ? `, ${plural(alignment.gaps, 'gap')}` : ''}. In the middle line
-                “|” marks an identical residue and “:” a similar one.
-              </p>
-              <pre className="alignment" aria-label="Alignment">
-                {alignment.text}
-              </pre>
-            </>
+            <AlignmentView alignment={alignment} />
           ) : (
             <p className="muted">No alignment is available for this candidate.</p>
           )}
         </section>
-        <section>
-          <h2>Worth knowing</h2>
-          <ul className="plain muted" style={{ marginTop: 12 }}>
+      </div>
+
+      <div className="callout">
+        <div className="stack" style={{ gap: 'var(--s-2)' }}>
+          <strong className="label">Worth knowing</strong>
+          <ul className="plain" style={{ fontSize: 'var(--t-small)' }}>
             {notes.map((n) => (
               <li key={n}>{n}</li>
             ))}
           </ul>
-        </section>
+        </div>
       </div>
     </div>
   )

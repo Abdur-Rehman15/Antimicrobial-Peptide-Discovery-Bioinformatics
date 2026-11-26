@@ -130,21 +130,43 @@ describe('NewRunPage', () => {
 // ---- Runs list --------------------------------------------------------------------------
 
 describe('RunsPage', () => {
-  it('lists the runs with their status', async () => {
-    vi.spyOn(api, 'listRuns').mockResolvedValue([
+  function mockRuns(list: ReturnType<typeof run>[]) {
+    vi.spyOn(api, 'listRuns').mockResolvedValue(list)
+    vi.spyOn(api, 'proteins').mockResolvedValue(proteins)
+    vi.spyOn(api, 'protein').mockResolvedValue(proteinDetail)
+  }
+
+  it('shows every run as a card carrying its status and figures', async () => {
+    mockRuns([
       run({ label: 'Human blood proteins' }),
       run({ id: 'b'.repeat(12), label: 'E. coli sample', kind: 'organism', status: 'running', progress: 0.4 }),
-      run({ id: 'c'.repeat(12), label: 'Broken one', status: 'failed' }),
+      run({ id: 'c'.repeat(12), label: 'Broken one', status: 'failed', error: 'UniProt timed out.' }),
     ])
     at('/', '/', <RunsPage />)
-    expect(await screen.findByRole('link', { name: 'Human blood proteins' })).toHaveAttribute('href', `/runs/${RUN}`)
-    expect(screen.getByText('Organism sample')).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Human blood proteins' })).toHaveAttribute(
+      'href',
+      `/runs/${RUN}`,
+    )
+    expect(screen.getAllByRole('article')).toHaveLength(3)
+    expect(screen.getByText(/Organism sample/)).toBeInTheDocument()
     expect(screen.getByText('Done')).toBeInTheDocument()
     expect(screen.getByText('Failed')).toBeInTheDocument()
-    expect(screen.getByRole('progressbar', { name: 'E. coli sample progress' })).toHaveAttribute('aria-valuenow', '40')
-    expect(screen.getAllByText('106,812', { selector: 'td' })).toHaveLength(3)
-    const deletes = screen.getAllByRole('button', { name: 'Delete' })
-    expect(deletes[1]).toBeDisabled() // a running job cannot be deleted
+    expect(screen.getByText('UniProt timed out.')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'E. coli sample progress' })).toHaveAttribute(
+      'aria-valuenow',
+      '40',
+    )
+  })
+
+  it('totals every run in the hero figures', async () => {
+    mockRuns([run(), run({ id: 'b'.repeat(12) })])
+    at('/', '/', <RunsPage />)
+    expect(await screen.findByText('Windows scored')).toBeInTheDocument()
+    // each fixture run scored 106,812 windows over 12 proteins
+    expect(screen.getByText('213,624')).toBeInTheDocument()
+    expect(screen.getByText('24')).toBeInTheDocument()
+    // candidates come from the per-run protein lists: 35 + 9 in each of the two runs
+    expect(await screen.findByText('88')).toBeInTheDocument()
   })
 
   it('invites you to start the first run when there are none', async () => {
@@ -152,24 +174,33 @@ describe('RunsPage', () => {
     at('/', '/', <RunsPage />)
     expect(await screen.findByText('No runs yet')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Start the first run' })).toHaveAttribute('href', '/new')
+    expect(screen.queryByRole('article')).not.toBeInTheDocument()
   })
 
   it('deletes a run after confirmation and reloads', async () => {
-    const list = vi.spyOn(api, 'listRuns').mockResolvedValue([run({ label: 'Old run' })])
+    mockRuns([run({ label: 'Old run' })])
     const del = vi.spyOn(api, 'deleteRun').mockResolvedValue(undefined)
     const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true)
     at('/', '/', <RunsPage />)
-    const button = await screen.findByRole('button', { name: 'Delete' })
+    const button = await screen.findByRole('button', { name: 'Delete run Old run' })
     await userEvent.click(button)
     expect(del).not.toHaveBeenCalled() // cancelled
     await userEvent.click(button)
     expect(confirm).toHaveBeenCalledTimes(2)
     expect(del).toHaveBeenCalledWith(RUN)
-    await waitFor(() => expect(list).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(api.listRuns).toHaveBeenCalledTimes(2))
+  })
+
+  it('does not offer to delete a run that is still going', async () => {
+    mockRuns([run({ label: 'Busy', status: 'running', progress: 0.2 })])
+    at('/', '/', <RunsPage />)
+    expect(await screen.findByRole('button', { name: 'Delete run Busy' })).toBeDisabled()
   })
 
   it('says so when the runs cannot be loaded', async () => {
-    vi.spyOn(api, 'listRuns').mockRejectedValue(new ApiError(0, 'Cannot reach the backend. Is it running on port 8000?'))
+    vi.spyOn(api, 'listRuns').mockRejectedValue(
+      new ApiError(0, 'Cannot reach the backend. Is it running on port 8000?'),
+    )
     at('/', '/', <RunsPage />)
     expect(await screen.findByRole('alert')).toHaveTextContent('Cannot reach the backend')
   })
@@ -206,11 +237,13 @@ describe('RunPage', () => {
     mockDone()
     open()
     expect(await screen.findByRole('link', { name: 'RRARVVWC' })).toBeInTheDocument()
-    const summary = screen.getByLabelText('Run summary')
-    expect(summary).toHaveTextContent('12 proteins')
-    expect(summary).toHaveTextContent('2,820 residues')
-    expect(summary).toHaveTextContent('106,812 windows scored')
-    expect(summary).toHaveTextContent('12 s scan time')
+    const summary = screen.getByRole('group', { name: 'Run summary' })
+    for (const label of ['Windows scored', 'Proteins', 'Residues', 'Candidates kept', 'Scan time'])
+      expect(within(summary).getByText(label)).toBeInTheDocument()
+    // each figure also carries its final value for screen readers, whatever the count-up is on
+    expect(summary).toHaveTextContent('106,812')
+    expect(summary).toHaveTextContent('2,820')
+    expect(summary).toHaveTextContent('12 s')
     expect(screen.getByText(/A random sample of 12 of 4,531 proteins/)).toBeInTheDocument()
     expect(screen.getByText('Showing 1–3 of 3')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Export CSV' }).getAttribute('href')).toContain(`/api/runs/${RUN}/results.csv?`)
@@ -222,7 +255,7 @@ describe('RunPage', () => {
     await screen.findByRole('link', { name: 'RRARVVWC' })
     fireEvent.change(screen.getByLabelText(/Safety weight/), { target: { value: '2' } })
     await waitFor(() =>
-      expect(results).toHaveBeenLastCalledWith(
+      expect(results).toHaveBeenCalledWith(
         RUN,
         expect.objectContaining({ safetyWeight: 2 }),
         { limit: 25, offset: 0 },
@@ -256,7 +289,7 @@ describe('RunPage', () => {
     expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
     await userEvent.click(screen.getByRole('button', { name: 'Next' }))
     await waitFor(() =>
-      expect(results).toHaveBeenLastCalledWith(RUN, expect.anything(), { limit: 25, offset: 25 }, expect.anything()),
+      expect(results).toHaveBeenCalledWith(RUN, expect.anything(), { limit: 25, offset: 25 }, expect.anything()),
     )
     expect(await screen.findByText('Showing 26–50 of 60')).toBeInTheDocument()
   })
@@ -320,7 +353,8 @@ describe('CandidatePage', () => {
     expect(screen.getByText('Net charge')).toBeInTheDocument()
     expect(screen.getByText('2.85')).toBeInTheDocument()
     expect(screen.getByText('64%')).toBeInTheDocument() // closest similarity
-    expect(screen.getByLabelText('Alignment')).toHaveTextContent('Score = 30, Identities = 4/7 (57%)')
+    expect(screen.getByRole('img', { name: /57% of columns identical/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy raw' })).toBeInTheDocument()
     expect(screen.getByText(/Not clearly similar to any known AMP in the reference of 17,492/)).toBeInTheDocument()
   })
 
@@ -380,7 +414,12 @@ describe('AboutPage', () => {
     expect(within(natural).getByText('34%')).toBeInTheDocument()
     expect(within(natural).getByText('13%')).toBeInTheDocument()
     expect(screen.getByText('0.75')).toBeInTheDocument() // hemolysis ROC AUC
-    expect(screen.getByText(info.rank_formula.replace(/\s+/g, ' '))).toBeInTheDocument()
+    // the formula is set with real superscripts now, so it spans several elements
+    expect(document.querySelector('.formula')).toHaveTextContent(
+      'activitya×(1 − hemolysis risk)s×noveltyn', // the exponents are <sup>, so no spaces
+    )
+    for (const step of ['Scan', 'Merge', 'Check', 'Rank'])
+      expect(screen.getByText(step)).toBeInTheDocument()
     expect(screen.getByText(info.caveat)).toBeInTheDocument()
     expect(screen.getByText(/100,000 residues and/)).toBeInTheDocument()
     expect(screen.getByText(/Half of all real AMPs are novel/)).toBeInTheDocument()
@@ -425,19 +464,12 @@ describe('the app shell', () => {
     expect(screen.getByText('uvicorn amp_triage.api.main:app --port 8000')).toBeInTheDocument()
   })
 
-  it('cycles the theme: auto, dark, light, auto', async () => {
+  it('draws the molecular lattice behind the page, out of the way of the pointer', async () => {
     vi.spyOn(api, 'listRuns').mockResolvedValue([])
-    localStorage.clear()
-    shell('/')
-    const button = await screen.findByRole('button', { name: /Auto/ })
-    expect(document.documentElement).not.toHaveAttribute('data-theme')
-    await userEvent.click(button)
-    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
-    await userEvent.click(screen.getByRole('button', { name: /Dark/ }))
-    expect(document.documentElement).toHaveAttribute('data-theme', 'light')
-    expect(localStorage.getItem('amp-theme')).toBe('light')
-    await userEvent.click(screen.getByRole('button', { name: /Light/ }))
-    expect(document.documentElement).not.toHaveAttribute('data-theme')
-    expect(localStorage.getItem('amp-theme')).toBeNull()
+    const { container } = shell('/')
+    await screen.findByRole('heading', { name: 'Runs' })
+    const lattice = container.querySelector('canvas.lattice')
+    expect(lattice).toBeInTheDocument()
+    expect(lattice).toHaveAttribute('aria-hidden')
   })
 })

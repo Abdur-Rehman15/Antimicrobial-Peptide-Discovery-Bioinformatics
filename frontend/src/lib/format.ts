@@ -40,6 +40,21 @@ export function estimatedSeconds(proteins: number, averageLength = 360): number 
   return windows / 23_000
 }
 
+/** "4 min ago", "3 h ago", and a date once it is more than a week old. */
+export function relativeTime(iso: string): string {
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return iso
+  const seconds = Math.round((Date.now() - then) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} h ago`
+  const days = Math.round(hours / 24)
+  if (days < 7) return days === 1 ? 'yesterday' : `${days} days ago`
+  return shortDate(iso)
+}
+
 export function shortDate(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return iso
@@ -49,13 +64,6 @@ export function shortDate(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
-}
-
-/** "KRWWKWIRW...LLKK" for long peptides, so tables stay narrow. */
-export function abbreviate(sequence: string, max = 26): string {
-  if (sequence.length <= max) return sequence
-  const side = Math.floor((max - 1) / 2)
-  return `${sequence.slice(0, side)}…${sequence.slice(sequence.length - side)}`
 }
 
 export const FEATURE_LABELS: Record<string, { label: string; hint: string }> = {

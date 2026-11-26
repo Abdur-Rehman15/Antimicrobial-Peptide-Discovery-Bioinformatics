@@ -4,6 +4,7 @@ import { api } from '../api/client'
 import type { Run, View } from '../api/types'
 import { ErrorNotice, Meter, Spinner } from '../components/Bits'
 import { StatusChip } from '../components/Chips'
+import { PipelineStages, stageFromMessage } from '../components/PipelineStages'
 import { ProteinMap } from '../components/ProteinMap'
 import { ResultsControls } from '../components/ResultsControls'
 import { ResultsTable } from '../components/ResultsTable'
@@ -11,15 +12,15 @@ import { ScatterPlot } from '../components/ScatterPlot'
 import { useAsync } from '../hooks/useAsync'
 import { useDebounced } from '../hooks/useDebounced'
 import { useRunStatus } from '../hooks/useRunStatus'
+import { Figure } from '../components/CountUp'
 import { count, duration, percent, plural } from '../lib/format'
 import { candidateLink } from '../lib/links'
 import { parseView, serializeView } from '../lib/view'
 
 const PAGE = 25
-type Tab = 'list' | 'chart' | 'proteins'
+type Tab = 'list' | 'proteins'
 const TABS: [Tab, string][] = [
   ['list', 'Ranked list'],
-  ['chart', 'Activity vs safety'],
   ['proteins', 'Proteins'],
 ]
 
@@ -31,6 +32,8 @@ function Progress({ run }: { run: Run }) {
       <p aria-live="polite">
         <strong>{percent(run.progress)}</strong> · {run.message}
       </p>
+      {/* which of the four stages the backend's own message says it is on */}
+      <PipelineStages active={stageFromMessage(run.message)} />
       {run.n_proteins !== null && (
         <p className="muted">
           {plural(run.n_proteins, 'protein')}, {count(run.n_residues)} residues.
@@ -44,8 +47,7 @@ function Progress({ run }: { run: Run }) {
 function Results({ run }: { run: Run }) {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
-  const tab: Tab =
-    (['list', 'chart', 'proteins'] as const).find((t) => t === params.get('tab')) ?? 'list'
+  const tab: Tab = (['list', 'proteins'] as const).find((t) => t === params.get('tab')) ?? 'list'
 
   // `draft` follows the sliders at once; `view` (debounced) drives requests and the address
   const [draft, setDraft] = useState<View>(() => parseView(params))
@@ -71,7 +73,6 @@ function Results({ run }: { run: Run }) {
   const all = useAsync(
     (signal) => api.results(run.id, view, { limit: 1000, offset: 0 }, signal),
     [run.id, viewKey],
-    tab === 'chart',
   )
   const firstWithCandidates = useMemo(
     () =>
@@ -99,6 +100,24 @@ function Results({ run }: { run: Run }) {
       <ResultsControls view={draft} onChange={setDraft} proteins={proteins.data} />
 
       <div className="stack" style={{ minWidth: 0 }}>
+        {!(all.data && all.data.rows.length === 0) && (
+          <div className="card">
+            <div className="row spread" style={{ marginBottom: 'var(--s-3)' }}>
+              <h2>Activity against safety</h2>
+              <span className="hint">Every candidate that passes the filters</span>
+            </div>
+            {all.error && !all.data && <ErrorNotice error={all.error} />}
+            {!all.data && !all.error && <Spinner label="Loading candidates" />}
+            {all.data && (
+              <ScatterPlot
+                candidates={all.data.rows}
+                loading={all.loading}
+                onSelect={(c) => navigate(candidateLink(run.id, c, view.prevalence))}
+              />
+            )}
+          </div>
+        )}
+
         <div className="row spread">
           <div className="tabs" role="tablist" aria-label="Views">
             {TABS.map(([value, text]) => (
@@ -148,23 +167,6 @@ function Results({ run }: { run: Run }) {
                 </div>
               </>
             )}
-          </div>
-        )}
-
-        {tab === 'chart' && (
-          <div className="card">
-            {all.error && !all.data && <ErrorNotice error={all.error} />}
-            {!all.data && !all.error && <Spinner label="Loading candidates" />}
-            {all.data &&
-              (all.data.rows.length === 0 ? (
-                <p className="empty">No candidate matches these filters.</p>
-              ) : (
-                <ScatterPlot
-                  candidates={all.data.rows}
-                  loading={all.loading}
-                  onSelect={(c) => navigate(candidateLink(run.id, c, view.prevalence))}
-                />
-              ))}
           </div>
         )}
 
@@ -246,23 +248,17 @@ export function RunPage() {
             {run?.kind === 'precomputed' && <span className="chip">Precomputed</span>}
           </div>
           {run?.status === 'done' && (
-            <p className="statline" aria-label="Run summary">
-              <span>
-                <b>{count(run.n_proteins)}</b> {run.n_proteins === 1 ? 'protein' : 'proteins'}
-              </span>
-              <span>
-                <b>{count(run.n_residues)}</b> residues
-              </span>
-              <span>
-                <b>{count(run.n_windows)}</b> windows scored
-              </span>
-              <span>
-                <b>{duration(run.seconds)}</b> scan time
-              </span>
-              <span>
-                <b>{count(run.options.top_n ?? null)}</b> candidates kept
-              </span>
-            </p>
+            <div className="metric-strip" aria-label="Run summary" role="group">
+              <Figure label="Windows scored" value={run.n_windows ?? 0} hero />
+              <Figure label="Proteins" value={run.n_proteins ?? 0} />
+              <Figure label="Residues" value={run.n_residues ?? 0} />
+              <Figure label="Candidates kept" value={run.options.top_n ?? 0} />
+              <Figure
+                label="Scan time"
+                value={Math.round((run.seconds ?? 0) * 10)}
+                format={(n) => duration(n / 10)}
+              />
+            </div>
           )}
           {run && run.notes.length > 0 && (
             <p className="hint" style={{ maxWidth: '72ch' }}>

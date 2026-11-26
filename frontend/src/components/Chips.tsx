@@ -1,9 +1,9 @@
 import type { HemolysisBand, NoveltyClass, RunState } from '../api/types'
 
 export const NOVELTY_COLOR: Record<NoveltyClass, string> = {
-  novel: 'var(--c-novel)',
-  related: 'var(--c-related)',
-  known: 'var(--c-known)',
+  novel: 'var(--novelty-novel)',
+  related: 'var(--novelty-related)',
+  known: 'var(--novelty-known)',
 }
 
 export const NOVELTY_LABEL: Record<NoveltyClass, string> = {
@@ -36,7 +36,7 @@ const BAND_TEXT: Record<HemolysisBand, string> = {
 
 /** Status colours are always paired with an icon and a label. */
 export function BandChip({ band, risk }: { band: HemolysisBand; risk?: number }) {
-  const colour = { low: 'var(--good)', medium: 'var(--warn)', high: 'var(--crit)' }[band]
+  const colour = { low: 'var(--risk-low)', medium: 'var(--risk-med)', high: 'var(--risk-high)' }[band]
   const title =
     `Predicted hemolysis (red blood cell damage): ${band}.` +
     (risk !== undefined ? ` Model score ${risk.toFixed(2)}, only roughly calibrated.` : '')
@@ -46,23 +46,23 @@ export function BandChip({ band, risk }: { band: HemolysisBand; risk?: number })
         {band === 'low' && (
           <>
             <circle cx="7" cy="7" r="6" fill={colour} />
-            <path d="M4 7.2 6.1 9.2 10 5" stroke="#fff" strokeWidth="1.8" fill="none" />
+            <path d="M4 7.2 6.1 9.2 10 5" stroke="var(--bg-base)" strokeWidth="1.8" fill="none" />
           </>
         )}
         {band === 'medium' && (
           <>
             <path d="M7 1 13 12H1z" fill={colour} />
-            <path d="M7 5v3.2M7 9.6v.2" stroke="#0b0b0b" strokeWidth="1.6" />
+            <path d="M7 5v3.2M7 9.6v.2" stroke="var(--bg-base)" strokeWidth="1.6" />
           </>
         )}
         {band === 'high' && (
           <>
             <circle cx="7" cy="7" r="6" fill={colour} />
-            <path d="M4.6 4.6 9.4 9.4M9.4 4.6 4.6 9.4" stroke="#fff" strokeWidth="1.8" />
+            <path d="M4.6 4.6 9.4 9.4M9.4 4.6 4.6 9.4" stroke="var(--bg-base)" strokeWidth="1.8" />
           </>
         )}
       </svg>
-      <span style={{ color: 'var(--ink)' }}>{BAND_TEXT[band]}</span>
+      <span style={{ color: 'var(--text-primary)' }}>{BAND_TEXT[band]}</span>
     </span>
   )
 }
@@ -76,10 +76,10 @@ const STATE_TEXT: Record<RunState, string> = {
 
 export function StatusChip({ state }: { state: RunState }) {
   const colour = {
-    queued: 'var(--muted)',
+    queued: 'var(--text-muted)',
     running: 'var(--accent)',
-    done: 'var(--good)',
-    failed: 'var(--crit)',
+    done: 'var(--risk-low)',
+    failed: 'var(--risk-high)',
   }[state]
   return (
     <span className="chip">

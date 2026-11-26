@@ -1,0 +1,144 @@
+/* ============================================================================
+   AMP Triage design tokens — "laboratory instrument"
+
+   One idea holds the whole interface together: the residue colour system is the
+   brand. A peptide is a string of amino acids, and what makes one antimicrobial
+   is its charge and its oily face. So the four residue colours below are not a
+   detail inside one component — they are the palette that sequences, charts,
+   coverage tracks, the helical wheel and the logo mark all draw from. One accent
+   carries interaction; the residues carry the richness.
+
+   Every colour here was checked, not chosen by eye: WCAG contrast against the
+   surface it sits on, and separation in OKLab under simulated protanopia,
+   deuteranopia and tritanopia. Where a value differs from the brief, the reason
+   is written beside it.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* ---- surfaces: deep neutral with a faint blue-green cast, never pure gray --- */
+  --bg-base: #0a0d0f;
+  --bg-surface: #11161a;
+  --bg-raised: #171e23;
+  --bg-overlay: #1e272d;
+
+  --border-subtle: #1f2a31;
+  --border: #2a3740;
+  --border-strong: #3a4a55;
+
+  /* ---- text -------------------------------------------------------------- */
+  --text-primary: #e8edf0; /* 15.4:1 on surface */
+  --text-secondary: #94a5b0; /* 7.2:1 */
+  /* The brief's #637682 measured 3.85:1 on the surface, under the 4.5:1 this
+     file is held to, and it is used at 11-13px where the bar applies. Lightened
+     to the nearest value that passes while keeping the blue-grey cast. */
+  --text-muted: #7a8c99; /* 5.2:1 */
+
+  /* ---- the residue palette: THE BRAND ------------------------------------ */
+  --res-basic: #5ba9f0; /* K R H — cationic, what makes an AMP stick to a membrane */
+  --res-acidic: #f2607a; /* D E */
+  --res-oily: #f0b429; /* A C F I L M V W — the hydrophobic face */
+  --res-other: #8a9ba8; /* everything else, deliberately recessive */
+  --res-weak: #4e90cc; /* histidine: basic, but only part charged at pH 7.4 */
+
+  /* Known limit, kept on purpose. Against --res-basic, --res-other separates by
+     OKLab dE 10.9 for normal vision, under the 15 floor used for chart series.
+     Every darker or more neutral grey tested fixes that but collapses toward
+     --res-acidic under colour blindness (dE down to 1.7), which is worse: this
+     value is the only one holding dE >= 8 against all three residue hues. It is
+     acceptable here because residues are letters, not chart marks — glyph shape
+     carries identity too, "other" is meant to recede, and the key beside every
+     sequence names each class in words. A residue colour never encodes a value
+     a reader has to decode from hue alone. */
+
+  /* ---- accent: one only -------------------------------------------------- */
+  --accent: #6e5bf2;
+  --accent-ink: #ffffff; /* 4.7:1 on the accent — fine for a button face */
+  /* --accent as text measures 3.85:1 on the surface, so links and small accent
+     text use the lighter step instead. Same hue, passes at 5.0:1. */
+  --accent-text: #8574f5;
+  --accent-dim: rgba(110, 91, 242, 0.16);
+  --accent-glow: rgba(110, 91, 242, 0.35);
+
+  /* ---- risk: always shipped with an icon and a word, never colour alone ---- */
+  --risk-low: #3dd68c;
+  --risk-med: #f5a524;
+  --risk-high: #f2555a;
+  /* --risk-med sits dE 2.2 from --res-oily and --risk-high dE 3.6 from
+     --res-acidic: near-duplicates by design, because risk and residues never
+     share a surface and risk always carries an icon plus a label. */
+
+  /* ---- novelty classes --------------------------------------------------- */
+  /* The brief does not assign these, and they are the one place the app uses
+     bare coloured dots with no icon, so they must separate on their own.
+     Drawn from the palette above: worst pair dE 9.4 under colour blindness
+     (target 8) and 19.7 for normal vision (floor 15), on --bg-surface. */
+  --novelty-novel: var(--accent); /* what the tool is for */
+  --novelty-related: var(--res-oily);
+  --novelty-known: var(--risk-low); /* already found, so not a prize */
+
+  /* ---- type -------------------------------------------------------------- */
+  --font-display: 'Geist', 'Instrument Sans', system-ui, sans-serif;
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  --t-hero: 64px;
+  --t-hero-weight: 700;
+  --t-hero-track: -0.03em;
+  --t-h1: 36px;
+  --t-h1-track: -0.02em;
+  --t-h2: 24px;
+  --t-h3: 17px;
+  --t-body: 15px;
+  --t-small: 13px;
+  --t-label: 11px;
+  --t-label-track: 0.08em;
+  --t-seq: 16px;
+  --t-seq-track: 0.05em;
+
+  /* ---- spacing: 4px base ------------------------------------------------- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-24: 96px;
+
+  /* ---- radius ------------------------------------------------------------ */
+  --r-control: 6px;
+  --r-card: 12px;
+  --r-hero: 20px;
+  --r-pill: 999px;
+
+  /* ---- elevation: a rim of light along the top edge, not a drop shadow ---- */
+  --rim: inset 0 1px 0 rgba(255, 255, 255, 0.055);
+  --rim-strong: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --lift: 0 8px 28px rgba(0, 0, 0, 0.45);
+
+  /* ---- motion ------------------------------------------------------------ */
+  --dur-micro: 120ms;
+  --dur-standard: 200ms;
+  --dur-enter: 320ms;
+  --dur-hero: 500ms;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ---- chart chrome ------------------------------------------------------ */
+  --grid: #1c252b;
+  --axis: #2f3d46;
+}
+
+/* Everything that moves is opt-in. A reader who asks for less motion gets the
+   finished state immediately, never a half-played animation. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-micro: 0ms;
+    --dur-standard: 0ms;
+    --dur-enter: 0ms;
+    --dur-hero: 0ms;
+  }
+}

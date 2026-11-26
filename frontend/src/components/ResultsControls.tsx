@@ -44,8 +44,16 @@ function Slider({
         <label htmlFor={id}>{label}</label>
         <output htmlFor={id}>{display}</output>
       </div>
-      <input id={id} type="range" min={min} max={max} step={step} value={value}
-        onChange={(e) => onChange(Number(e.target.value))} />
+      <input
+        id={id}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        style={{ '--fill': `${((value - min) / (max - min)) * 100}%` } as React.CSSProperties}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
       <p className="hint">{help}</p>
     </div>
   )

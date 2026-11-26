@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, vi } from 'vitest'
-import { candidate, proteinDetail, proteins, rows3 } from '../test/fixtures'
+import { candidate, detail, proteinDetail, proteins, rows3 } from '../test/fixtures'
 import { DEFAULT_VIEW } from '../lib/view'
 import type { View } from '../api/types'
 import { BandChip, NoveltyChip, StatusChip } from './Chips'
@@ -12,6 +12,8 @@ import { ProteinMap, assignLanes, ridgeMax, tickStep } from './ProteinMap'
 import { ResultsControls } from './ResultsControls'
 import { ResultsTable } from './ResultsTable'
 import { ScatterPlot, logRange } from './ScatterPlot'
+import { AlignmentView } from './AlignmentView'
+import { PropertyBar } from './PropertyBar'
 import { Sequence, SequenceContext, SequenceHero, SequenceKey } from './Sequence'
 
 function Where() {
@@ -67,16 +69,20 @@ describe('ResultsTable', () => {
     expect(link.getAttribute('href')).toContain('p=0.001')
   })
 
-  it('shortens a long peptide but keeps the whole sequence in the tooltip', () => {
+  it('keeps a long peptide whole, and lets the column clip it', () => {
     inRouter(<ResultsTable runId="r1" rows={rows3} prevalence={0.001} />)
     const long = screen.getByTitle('GSRKNMACYCRIPACIAGERRYGTCIYQGRLWAFCC')
-    expect(long.textContent).toContain('…')
-    expect(long.textContent!.length).toBeLessThanOrEqual(24)
+    // the whole sequence is in the page, so the link's name matches what is on screen
+    expect(long).toHaveTextContent('GSRKNMACYCRIPACIAGERRYGTCIYQGRLWAFCC')
+    expect(long).toHaveClass('seq')
+    expect(
+      screen.getByRole('link', { name: 'GSRKNMACYCRIPACIAGERRYGTCIYQGRLWAFCC' }),
+    ).toBeInTheDocument()
   })
 
   it('opens the candidate when a row is clicked', async () => {
     inRouter(<ResultsTable runId="r1" rows={rows3} prevalence={0.001} />)
-    await userEvent.click(screen.getByRole('link', { name: 'GKKVLGAFSDGLA' }).closest('tr')!)
+    await userEvent.click(screen.getByRole('link', { name: 'GKKVLGAFSDGLA' }).closest('[role="row"]')!)
     expect(screen.getByTestId('where').textContent).toContain('accession=P68871&start=65&end=77')
   })
 
@@ -415,5 +421,70 @@ describe('the protein ridge', () => {
     expect(container.querySelector('path[stroke="var(--accent)"]')).not.toBeInTheDocument()
     expect(screen.getByText(/Overlapping regions sit on separate rows/)).toBeInTheDocument()
     expect(screen.getAllByRole('link')).toHaveLength(2) // the candidates still draw
+  })
+})
+
+describe('the alignment', () => {
+  const alignment = detail().alignment!
+
+  it('shows both sequences, the identity, and a way back to the raw text', () => {
+    render(<AlignmentView alignment={alignment} />)
+    expect(screen.getByRole('img', { name: /57% of columns identical/ })).toBeInTheDocument()
+    // every column appears once in each row
+    const rows = document.querySelectorAll('.align-row')
+    expect(rows).toHaveLength(3) // query, connectors, target
+    expect(rows[0]).toHaveTextContent('RRARVVW')
+    expect(rows[2]).toHaveTextContent('RKARIAW')
+    expect(screen.getAllByText('57%').length).toBeGreaterThan(0)
+    expect(screen.getByText('86%')).toBeInTheDocument()
+    expect(screen.getByText('30')).toBeInTheDocument()
+  })
+
+  it('joins identical columns and marks conservative swaps differently', () => {
+    const { container } = render(<AlignmentView alignment={alignment} />)
+    // the midline is "|:||: |": four identical, two similar
+    expect(container.querySelectorAll('.align-link.same')).toHaveLength(4)
+    expect(container.querySelectorAll('.align-link.alike')).toHaveLength(2)
+  })
+
+  it('copies the raw text on request', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+    render(<AlignmentView alignment={alignment} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Copy raw' }))
+    expect(writeText).toHaveBeenCalledWith(alignment.text)
+    expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument()
+  })
+})
+
+describe('property bars', () => {
+  it('places a value inside the band of known AMPs', () => {
+    const { container } = render(<PropertyBar name="net_charge" value={4} />)
+    const dot = container.querySelector('.prop-dot') as HTMLElement
+    expect(dot).not.toHaveClass('outside')
+    expect(container.querySelector('.prop-bar')).toHaveAttribute(
+      'title',
+      'Within the range of most known AMPs',
+    )
+  })
+
+  it('marks a value that sits outside it, on either side', () => {
+    const low = render(<PropertyBar name="net_charge" value={-4} />)
+    expect(low.container.querySelector('.prop-dot')).toHaveClass('outside')
+    expect(low.container.querySelector('.prop-bar')).toHaveAttribute(
+      'title',
+      expect.stringContaining('lower'),
+    )
+    low.unmount()
+    const high = render(<PropertyBar name="net_charge" value={20} />)
+    expect(high.container.querySelector('.prop-bar')).toHaveAttribute(
+      'title',
+      expect.stringContaining('higher'),
+    )
+  })
+
+  it('draws nothing for a property with no reference range', () => {
+    const { container } = render(<PropertyBar name="not_a_property" value={1} />)
+    expect(container).toBeEmptyDOMElement()
   })
 })

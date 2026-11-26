@@ -192,7 +192,7 @@ export function ProteinMap({ protein, runId, prevalence }: Props) {
                     cy={y(scan.v)}
                     r={5}
                     fill="var(--accent)"
-                    stroke="var(--surface)"
+                    stroke="var(--bg-surface)"
                     strokeWidth={2}
                   />
                 </g>
@@ -230,7 +230,7 @@ export function ProteinMap({ protein, runId, prevalence }: Props) {
                   height={BAR}
                   rx={4}
                   fill={NOVELTY_COLOR[c.novelty_class]}
-                  stroke="var(--surface)"
+                  stroke="var(--bg-surface)"
                   strokeWidth={2}
                 />
                 {w >= 20 && (
